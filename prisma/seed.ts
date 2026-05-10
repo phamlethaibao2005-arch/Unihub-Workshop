@@ -2,16 +2,13 @@ import "dotenv/config";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@prisma/client";
 import { createHash } from "crypto";
+import { hashPassword } from "@better-auth/utils/password";
 
 const db = new PrismaClient({
   adapter: new PrismaPg(process.env.DATABASE_URL!),
 });
 
-// Bcrypt-compatible hash for "password123" using Better-Auth's default cost 10.
-// We pre-compute a real bcrypt hash to avoid importing bcrypt in the seed.
-// Generated with: bcrypt.hashSync("password123", 10)
-const PASSWORD_HASH =
-  "$2b$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2uheWG/igi.";
+const SEED_PASSWORD = "password123";
 
 function makeEmail(name: string) {
   return `${name.toLowerCase().replace(/ /g, ".")}@unihub.edu.vn`;
@@ -24,6 +21,7 @@ function stableId(seed: string) {
 
 async function main() {
   console.log("Seeding database...");
+  const passwordHash = await hashPassword(SEED_PASSWORD);
 
   // ─── Users ─────────────────────────────────────────────────────────────────
   const users = [
@@ -62,13 +60,15 @@ async function main() {
           accountId: email,
         },
       },
-      update: {},
+      update: {
+        password: passwordHash,
+      },
       create: {
         id: stableId(`account:${u.name}`),
         accountId: email,
         providerId: "credential",
         userId: user.id,
-        password: PASSWORD_HASH,
+        password: passwordHash,
       },
     });
   }

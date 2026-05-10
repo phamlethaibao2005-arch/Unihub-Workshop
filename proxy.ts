@@ -6,17 +6,25 @@ import { Ratelimit } from "@upstash/ratelimit"
 const SESSION_COOKIE = "better-auth.session_token"
 const SESSION_TTL = 60 // seconds
 
-const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL!,
-  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-})
+const hasRedisConfig = Boolean(
+  process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN
+)
+
+const redis = hasRedisConfig
+  ? new Redis({
+      url: process.env.UPSTASH_REDIS_REST_URL!,
+      token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+    })
+  : null
 
 // 5 requests per 15 minutes per IP (token bucket)
-const loginRatelimit = new Ratelimit({
-  redis,
-  limiter: Ratelimit.tokenBucket(5, "15 m", 5),
-  prefix: "rl:login",
-})
+const loginRatelimit = redis
+  ? new Ratelimit({
+      redis,
+      limiter: Ratelimit.tokenBucket(5, "15 m", 5),
+      prefix: "rl:login",
+    })
+  : null
 
 // ---------------------------------------------------------------------------
 // Route helpers
@@ -63,8 +71,10 @@ async function lookupSession(req: NextRequest): Promise<CachedSession | null> {
   const token = req.cookies.get(SESSION_COOKIE)?.value
   if (!token) return null
 
-  const cached = await redis.get<CachedSession>(`session:${token}`)
-  if (cached) return cached
+  if (redis) {
+    const cached = await redis.get<CachedSession>(`session:${token}`)
+    if (cached) return cached
+  }
 
   try {
     const url = new URL("/api/auth/get-session", req.url)
@@ -74,7 +84,7 @@ async function lookupSession(req: NextRequest): Promise<CachedSession | null> {
     })
     if (!res.ok) return null
     const data: CachedSession | null = await res.json()
-    if (data?.user?.role) {
+    if (redis && data?.user?.role) {
       await redis.set(`session:${token}`, data, { ex: SESSION_TTL })
     }
     return data?.user ? data : null
@@ -92,16 +102,18 @@ export async function proxy(req: NextRequest): Promise<NextResponse> {
   const method = req.method
   const isApi = pathname.startsWith("/api/")
 
-  // Rate-limit sign-in
-  if (pathname === "/api/auth/sign-in/email" && method === "POST") {
+  // Rate-limit login
+  if (pathname === "/api/auth/login/email" && method === "POST") {
     const ip =
       req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "anonymous"
-    const { success } = await loginRatelimit.limit(ip)
-    if (!success) {
-      return NextResponse.json(
-        { error: "Too many requests", code: "RATE_LIMIT_EXCEEDED" },
-        { status: 429 }
-      )
+    if (loginRatelimit) {
+      const { success } = await loginRatelimit.limit(ip)
+      if (!success) {
+        return NextResponse.json(
+          { error: "Too many requests", code: "RATE_LIMIT_EXCEEDED" },
+          { status: 429 }
+        )
+      }
     }
   }
 
