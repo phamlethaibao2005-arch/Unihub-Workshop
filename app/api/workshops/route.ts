@@ -8,7 +8,6 @@ import { WorkshopStatus } from '@/modules/workshop/domain/WorkshopStatus'
 import { toWorkshopDTO } from '@/shared/types/workshop-presenter'
 import { toResponse } from '@/shared/errors/handle'
 
-export const dynamic = 'force-dynamic'
 
 const PAGE_SIZE = 12
 

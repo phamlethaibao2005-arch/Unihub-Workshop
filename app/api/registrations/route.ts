@@ -14,7 +14,6 @@ import type { IWorkshopRepository } from '@/modules/workshop/domain/IWorkshopRep
 import type { ISeatStore } from '@/modules/registration/domain/SeatManager'
 import type { RegistrationDTO } from '@/shared/types/registration'
 
-export const dynamic = 'force-dynamic'
 
 function getService(): RegistrationService {
   return new RegistrationService(

@@ -13,7 +13,6 @@ import { IdempotencyService } from '@/modules/payment/application/IdempotencySer
 import type { IWorkshopRepository } from '@/modules/workshop/domain/IWorkshopRepository'
 import type { ISeatStore } from '@/modules/registration/domain/SeatManager'
 
-export const dynamic = 'force-dynamic'
 
 function getService(): RegistrationService {
   return new RegistrationService(

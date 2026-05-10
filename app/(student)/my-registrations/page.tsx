@@ -4,7 +4,6 @@ import { db } from '@/shared/infrastructure/PrismaClient'
 import { RegistrationListClient } from '@/components/registration/RegistrationListClient'
 import type { RegistrationDTO } from '@/shared/types/registration'
 
-export const dynamic = 'force-dynamic'
 
 function fmt(d: Date) {
   return d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false })

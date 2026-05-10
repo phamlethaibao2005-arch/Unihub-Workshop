@@ -5,7 +5,6 @@ import { WorkshopService } from '@/modules/workshop/application/WorkshopService'
 import type { IWorkshopRepository } from '@/modules/workshop/domain/IWorkshopRepository'
 import type { WorkshopProps } from '@/modules/workshop/domain/Workshop'
 
-export const dynamic = 'force-dynamic'
 
 function getService() {
   return new WorkshopService(Container.resolve<IWorkshopRepository>('workshopRepository'), EventBus)

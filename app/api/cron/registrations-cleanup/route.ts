@@ -1,11 +1,10 @@
 import { db } from '@/shared/infrastructure/PrismaClient'
 import { redis } from '@/shared/infrastructure/RedisClient'
-
-type TxClient = Parameters<Parameters<typeof db.$transaction>[0]>[0]
 import { SeatManager } from '@/modules/registration/domain/SeatManager'
 import type { ISeatStore } from '@/modules/registration/domain/SeatManager'
 
-export const dynamic = 'force-dynamic'
+type TxClient = Parameters<Parameters<typeof db.$transaction>[0]>[0]
+
 
 const seatManager = new SeatManager(redis as unknown as ISeatStore)
 

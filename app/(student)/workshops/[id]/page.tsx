@@ -18,7 +18,6 @@ import { EventBus } from '@/shared/infrastructure/EventBus'
 import { toWorkshopDetailDTO } from '@/shared/types/workshop-presenter'
 import type { WorkshopDetailDTO } from '@/shared/types/workshop'
 
-export const dynamic = 'force-dynamic'
 
 type PaymentStatus = 'ok' | 'degraded'
 
