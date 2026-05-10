@@ -13,16 +13,33 @@ import { IdempotencyService } from '@/modules/payment/application/IdempotencySer
 import type { IWorkshopRepository } from '@/modules/workshop/domain/IWorkshopRepository'
 import type { ISeatStore } from '@/modules/registration/domain/SeatManager'
 import type { RegistrationDTO } from '@/shared/types/registration'
+import { PaymentService } from '@/modules/payment/application/PaymentService'
+import { PrismaPaymentRepository } from '@/modules/payment/infrastructure/PrismaPaymentRepository'
+import type { IPaymentGateway } from '@/modules/payment/domain/IPaymentGateway'
 
+function getService(ipAddress: string): RegistrationService {
+  const paymentService = new PaymentService(
+    Container.resolve<IPaymentGateway>('paymentGateway'),
+    new PrismaPaymentRepository(db),
+    new PrismaRegistrationRepository(db),
+    new IdempotencyService(db),
+    new SeatManager(redis as unknown as ISeatStore),
+    EventBus,
+    db,
+  )
+  // Wrap initiatePayment to bind the request IP
+  const boundPaymentService = {
+    initiatePayment: (registrationId: string, amount: number, key: string) =>
+      paymentService.initiatePayment(registrationId, amount, key, ipAddress),
+  }
 
-function getService(): RegistrationService {
   return new RegistrationService(
     Container.resolve<IWorkshopRepository>('workshopRepository'),
     new PrismaRegistrationRepository(db),
     new SeatManager(redis as unknown as ISeatStore),
     new IdempotencyService(db),
     EventBus,
-    null,
+    boundPaymentService,
     db,
   )
 }
@@ -75,8 +92,9 @@ export async function POST(req: Request) {
       (typeof body.idempotencyKey === 'string' ? body.idempotencyKey : null) ??
       crypto.randomUUID()
     const workshopId = body.workshopId as string
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? '127.0.0.1'
 
-    const result = await getService().register(session.user.id, workshopId, idempotencyKey)
+    const result = await getService(ip).register(session.user.id, workshopId, idempotencyKey)
     return NextResponse.json(result, { status: 201 })
   } catch (err) {
     unstable_rethrow(err)
