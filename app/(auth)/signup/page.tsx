@@ -9,7 +9,7 @@ import { z } from 'zod'
 import { Input } from '@/components/ui/input'
 import { Field, FieldLabel, FieldError } from '@/components/ui/field'
 import { PillButton } from '@/components/PillButton'
-import { signUp } from '@/lib/auth-client'
+import { signIn, signUp } from '@/lib/auth-client'
 
 const schema = z.object({
   name: z.string().min(2, 'Tên phải có ít nhất 2 ký tự'),
@@ -43,6 +43,7 @@ export default function SignupPage() {
   const [password, setPassword] = useState('')
   const [errors, setErrors] = useState<{ name?: string; email?: string; password?: string }>({})
   const [loading, setLoading] = useState(false)
+  const [socialLoading, setSocialLoading] = useState<'google' | 'github' | null>(null)
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -67,6 +68,29 @@ export default function SignupPage() {
     }
 
     router.push('/workshops')
+  }
+
+  const onSocial = async (provider: 'google' | 'github') => {
+    setSocialLoading(provider)
+    const { data, error } = await signIn.social({
+      provider,
+      callbackURL: '/workshops',
+      newUserCallbackURL: '/workshops',
+      errorCallbackURL: '/signup',
+    })
+
+    if (error) {
+      toast.error(error.message ?? 'Đăng ký thất bại')
+      setSocialLoading(null)
+      return
+    }
+
+    if (data?.url) {
+      window.location.href = data.url
+      return
+    }
+
+    setSocialLoading(null)
   }
 
   return (
@@ -150,17 +174,19 @@ export default function SignupPage() {
       <div className="mt-4 flex items-center justify-center gap-3">
         <button
           type="button"
-          disabled
-          className="pill-ghost opacity-50 cursor-not-allowed"
-          title="Sắp ra mắt"
+          onClick={() => onSocial('google')}
+          disabled={!!socialLoading}
+          className="pill-ghost"
+          aria-busy={socialLoading === 'google'}
         >
           <GoogleMark /> Google
         </button>
         <button
           type="button"
-          disabled
-          className="pill-ghost opacity-50 cursor-not-allowed"
-          title="Sắp ra mắt"
+          onClick={() => onSocial('github')}
+          disabled={!!socialLoading}
+          className="pill-ghost"
+          aria-busy={socialLoading === 'github'}
         >
           <GitHubMark /> GitHub
         </button>

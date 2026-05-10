@@ -151,14 +151,14 @@ function CtaButton({
 
   if (isFull) {
     return (
-      <PillButton variant="primary" disabled className="w-full justify-center opacity-50">
+      <PillButton variant="primary" disabled className="w-full justify-center opacity-50 cursor-pointer">
         Hết Chỗ
       </PillButton>
     )
   }
 
   return (
-    <PillButton variant="primary" className="w-full justify-center">
+    <PillButton variant="primary" className="w-full justify-center cursor-pointer">
       Đăng Ký Ngay
     </PillButton>
   )
