@@ -51,6 +51,11 @@ export function RegisterDrawer({
 
       const data = await res.json()
 
+      if (res.status === 401) {
+        router.push(`/login?redirect=${encodeURIComponent(window.location.pathname)}`)
+        return
+      }
+
       if (!res.ok) {
         const code = data.code as string
         if (code === 'CONFLICT' && data.error === 'ALREADY_REGISTERED') {
@@ -80,7 +85,7 @@ export function RegisterDrawer({
 
   return (
     <Drawer open={open} onOpenChange={(v) => !v && onClose()}>
-      <DrawerContent className="rounded-none border-t border-hairline bg-canvas">
+      <DrawerContent aria-describedby={undefined} className="rounded-none border-t border-hairline bg-canvas">
         <DrawerHeader className="border-b border-hairline pb-4">
           <DrawerTitle className="font-display text-[22px] text-ink uppercase tracking-[0.02em]">
             Xác nhận đăng ký
