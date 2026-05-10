@@ -8,7 +8,7 @@ import { WorkshopStatus } from '@/modules/workshop/domain/WorkshopStatus'
 import { toWorkshopDTO } from '@/shared/types/workshop-presenter'
 import { toResponse } from '@/shared/errors/handle'
 
-export const revalidate = 60
+export const dynamic = 'force-dynamic'
 
 const PAGE_SIZE = 12
 

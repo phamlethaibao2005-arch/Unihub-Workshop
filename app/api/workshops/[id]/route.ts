@@ -7,7 +7,7 @@ import type { IWorkshopRepository } from '@/modules/workshop/domain/IWorkshopRep
 import { toWorkshopDetailDTO } from '@/shared/types/workshop-presenter'
 import { toResponse } from '@/shared/errors/handle'
 
-export const revalidate = 60
+export const dynamic = 'force-dynamic'
 
 function getService() {
   return new WorkshopService(Container.resolve<IWorkshopRepository>('workshopRepository'), EventBus)

@@ -11,7 +11,7 @@ import type { IWorkshopRepository } from '@/modules/workshop/domain/IWorkshopRep
 import { WorkshopStatus } from '@/modules/workshop/domain/WorkshopStatus'
 import { toWorkshopDTO } from '@/shared/types/workshop-presenter'
 
-export const revalidate = 60
+export const dynamic = 'force-dynamic'
 
 const MARQUEE_ITEMS = [
   'AI PIPELINES',

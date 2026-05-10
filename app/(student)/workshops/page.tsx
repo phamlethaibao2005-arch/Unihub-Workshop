@@ -11,7 +11,7 @@ import { EventBus } from '@/shared/infrastructure/EventBus'
 import { toWorkshopDTO } from '@/shared/types/workshop-presenter'
 import type { WorkshopDTO } from '@/shared/types/workshop'
 
-export const revalidate = 60
+export const dynamic = 'force-dynamic'
 
 const PRICE_FILTERS = [
   { label: 'Tất cả', value: 'all' },
