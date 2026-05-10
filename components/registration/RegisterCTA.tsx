@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { PillButton } from '@/components/PillButton'
 import { RegisterDrawer } from './RegisterDrawer'
 
@@ -14,6 +15,7 @@ interface RegisterCTAProps {
   workshopPrice: number
   isFull: boolean
   isRegistered: boolean
+  isLoggedIn: boolean
   paymentDegraded: boolean
 }
 
@@ -26,9 +28,11 @@ export function RegisterCTA({
   workshopPrice,
   isFull,
   isRegistered,
+  isLoggedIn,
   paymentDegraded,
 }: RegisterCTAProps) {
   const [open, setOpen] = useState(false)
+  const router = useRouter()
 
   if (paymentDegraded && workshopPrice > 0) {
     return (
@@ -59,7 +63,7 @@ export function RegisterCTA({
       <PillButton
         variant="primary"
         className="w-full justify-center cursor-pointer"
-        onClick={() => setOpen(true)}
+        onClick={() => isLoggedIn ? setOpen(true) : router.push('/login')}
       >
         Đăng Ký Ngay
       </PillButton>

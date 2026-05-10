@@ -43,21 +43,17 @@ async function getPaymentStatus(): Promise<PaymentStatus> {
   }
 }
 
-async function isUserRegistered(workshopId: string): Promise<boolean> {
+async function getRegistrationInfo(workshopId: string): Promise<{ isRegistered: boolean; isLoggedIn: boolean }> {
   const session = await getSession()
-  if (!session?.user.id) return false
+  if (!session?.user.id) return { isRegistered: false, isLoggedIn: false }
 
   const registration = await db.registration.findUnique({
-    where: {
-      userId_workshopId: {
-        userId: session.user.id,
-        workshopId,
-      },
-    },
+    where: { userId_workshopId: { userId: session.user.id, workshopId } },
     select: { status: true },
   })
 
-  return registration?.status === 'CONFIRMED' || registration?.status === 'PENDING'
+  const isRegistered = registration?.status === 'CONFIRMED' || registration?.status === 'PENDING'
+  return { isRegistered, isLoggedIn: true }
 }
 
 function renderMarkdown(source: string): ReactNode[] {
@@ -135,8 +131,8 @@ export default async function WorkshopDetailPage({
     notFound()
   }
 
-  const [registered, paymentStatus] = await Promise.all([
-    isUserRegistered(workshop.id),
+  const [{ isRegistered: registered, isLoggedIn }, paymentStatus] = await Promise.all([
+    getRegistrationInfo(workshop.id),
     getPaymentStatus(),
   ])
   const price = formatPrice(workshop.price)
@@ -252,6 +248,7 @@ export default async function WorkshopDetailPage({
                   workshopPrice={workshop.price}
                   isFull={isFull}
                   isRegistered={registered}
+                  isLoggedIn={isLoggedIn}
                   paymentDegraded={paymentDegraded}
                 />
               </div>
@@ -282,6 +279,7 @@ export default async function WorkshopDetailPage({
             workshopPrice={workshop.price}
             isFull={isFull}
             isRegistered={registered}
+            isLoggedIn={isLoggedIn}
             paymentDegraded={paymentDegraded}
           />
         </div>

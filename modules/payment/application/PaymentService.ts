@@ -11,8 +11,8 @@ import type { IIdempotencyService } from './IIdempotencyService'
 import type { IRegistrationRepository } from '@/modules/registration/domain/IRegistrationRepository'
 import type { SeatManager } from '@/modules/registration/domain/SeatManager'
 
-const QR_SECRET = () => process.env.QR_HMAC_SECRET ?? 'dev-secret'
-const BASE_URL = () => process.env.BETTER_AUTH_URL ?? 'http://localhost:3000'
+const QR_SECRET = () => process.env.QR_HMAC_SECRET!
+const BASE_URL = () => process.env.BETTER_AUTH_URL!
 
 export interface CallbackResult {
   RspCode: string
