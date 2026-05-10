@@ -1,6 +1,9 @@
 import type { IWorkshopRepository } from '@/modules/workshop/domain/IWorkshopRepository'
 import { PrismaWorkshopRepository } from '@/modules/workshop/infrastructure/PrismaWorkshopRepository'
 import { CachedWorkshopRepository } from '@/modules/workshop/infrastructure/CachedWorkshopRepository'
+import type { IPaymentGateway } from '@/modules/payment/domain/IPaymentGateway'
+import { VNPayGateway } from '@/modules/payment/infrastructure/VNPayGateway'
+import { PaymentGatewayCircuitBreaker } from '@/modules/payment/infrastructure/PaymentGatewayCircuitBreaker'
 import { db } from './PrismaClient'
 import { redis } from './RedisClient'
 
@@ -32,10 +35,20 @@ export const Container = {
   },
 };
 
-// ── Registrations ──────────────────────────────────────────────────────────
-// workshopRepository: CachedWorkshopRepository(PrismaWorkshopRepository)
-// findById hits Redis first; only one SQL query on repeated calls.
 Container.register<IWorkshopRepository>(
   'workshopRepository',
   () => new CachedWorkshopRepository(new PrismaWorkshopRepository(db), redis)
+);
+
+Container.register<IPaymentGateway>(
+  'paymentGateway',
+  () => new PaymentGatewayCircuitBreaker(
+    new VNPayGateway({
+      tmnCode:    process.env.VNPAY_TMN_CODE!,
+      hashSecret: process.env.VNPAY_HASH_SECRET!,
+      paymentUrl: process.env.VNPAY_URL ?? 'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html',
+      queryUrl:   process.env.VNPAY_QUERY_URL ?? 'https://sandbox.vnpayment.vn/merchant_webapi/api/transaction',
+    }),
+    redis,
+  )
 );
