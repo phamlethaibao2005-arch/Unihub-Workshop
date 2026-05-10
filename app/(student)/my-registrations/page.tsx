@@ -28,7 +28,7 @@ export default async function MyRegistrationsPage() {
     orderBy: { createdAt: 'desc' },
   })
 
-  const registrations: RegistrationDTO[] = rows.map((row) => ({
+  const registrations: RegistrationDTO[] = rows.map((row: typeof rows[number]) => ({
     id: row.id,
     workshopId: row.workshopId,
     status: row.status as RegistrationDTO['status'],
