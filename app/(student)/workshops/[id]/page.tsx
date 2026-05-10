@@ -1,13 +1,12 @@
 import Image from 'next/image'
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { ChevronDown } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Footer } from '@/components/Footer'
 import { LiveSeatBar } from '@/components/landing/LiveSeatBar'
 import { Nav } from '@/components/landing/Nav'
-import { PillButton } from '@/components/PillButton'
 import { getSession } from '@/lib/session'
+import { RegisterCTA } from '@/components/registration/RegisterCTA'
 import { AISummaryStatus } from '@/modules/workshop/domain/AISummaryStatus'
 import { WorkshopService } from '@/modules/workshop/application/WorkshopService'
 import type { IWorkshopRepository } from '@/modules/workshop/domain/IWorkshopRepository'
@@ -121,47 +120,6 @@ function renderMarkdown(source: string): ReactNode[] {
   return nodes
 }
 
-function CtaButton({
-  isFull,
-  isRegistered,
-  paymentDegraded,
-  price,
-}: {
-  isFull: boolean
-  isRegistered: boolean
-  paymentDegraded: boolean
-  price: number
-}) {
-  if (paymentDegraded && price > 0) {
-    return (
-      <PillButton variant="primary" disabled className="w-full justify-center opacity-50">
-        Thanh Toán Tạm Ngưng
-      </PillButton>
-    )
-  }
-
-  if (isRegistered) {
-    return (
-      <PillButton variant="primary" asChild className="w-full justify-center">
-        <Link href="/my-registrations">Bạn Đã Đăng Ký</Link>
-      </PillButton>
-    )
-  }
-
-  if (isFull) {
-    return (
-      <PillButton variant="primary" disabled className="w-full justify-center opacity-50 cursor-pointer">
-        Hết Chỗ
-      </PillButton>
-    )
-  }
-
-  return (
-    <PillButton variant="primary" className="w-full justify-center cursor-pointer">
-      Đăng Ký Ngay
-    </PillButton>
-  )
-}
 
 export default async function WorkshopDetailPage({
   params,
@@ -285,11 +243,16 @@ export default async function WorkshopDetailPage({
               </div>
 
               <div className="mt-6">
-                <CtaButton
+                <RegisterCTA
+                  workshopId={workshop.id}
+                  workshopTitle={workshop.title}
+                  workshopDate={workshop.date}
+                  workshopTime={workshop.time}
+                  workshopLocation={workshop.location}
+                  workshopPrice={workshop.price}
                   isFull={isFull}
                   isRegistered={registered}
                   paymentDegraded={paymentDegraded}
-                  price={workshop.price}
                 />
               </div>
             </div>
@@ -310,11 +273,16 @@ export default async function WorkshopDetailPage({
         </div>
         <LiveSeatBar workshopId={workshop.id} taken={workshop.seatsTaken} total={workshop.seatsTotal} />
         <div className="mt-3">
-          <CtaButton
+          <RegisterCTA
+            workshopId={workshop.id}
+            workshopTitle={workshop.title}
+            workshopDate={workshop.date}
+            workshopTime={workshop.time}
+            workshopLocation={workshop.location}
+            workshopPrice={workshop.price}
             isFull={isFull}
             isRegistered={registered}
             paymentDegraded={paymentDegraded}
-            price={workshop.price}
           />
         </div>
       </div>
