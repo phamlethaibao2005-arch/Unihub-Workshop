@@ -116,10 +116,6 @@ export function RegisterDrawer({
             </span>
           </div>
 
-          {/* Idempotency key — debug context */}
-          <p className="font-mono text-[10px] text-[#9e9ea0] break-all">
-            key: {idempotencyKey}
-          </p>
         </div>
 
         <DrawerFooter className="border-t border-hairline pt-4 flex flex-col gap-2">
