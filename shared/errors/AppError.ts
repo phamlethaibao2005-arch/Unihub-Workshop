@@ -23,7 +23,7 @@ export class ConflictError extends AppError {
 
 export class ValidationError extends AppError {
   constructor(message = "Validation failed") {
-    super(message, 422, "VALIDATION_ERROR");
+    super(message, 400, "VALIDATION_ERROR");
   }
 }
 
