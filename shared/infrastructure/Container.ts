@@ -1,3 +1,9 @@
+import type { IWorkshopRepository } from '@/modules/workshop/domain/IWorkshopRepository'
+import { PrismaWorkshopRepository } from '@/modules/workshop/infrastructure/PrismaWorkshopRepository'
+import { CachedWorkshopRepository } from '@/modules/workshop/infrastructure/CachedWorkshopRepository'
+import { db } from './PrismaClient'
+import { redis } from './RedisClient'
+
 type Factory<T> = () => T;
 
 const registry = new Map<string, Factory<unknown>>();
@@ -25,3 +31,11 @@ export const Container = {
     singletons.clear();
   },
 };
+
+// ── Registrations ──────────────────────────────────────────────────────────
+// workshopRepository: CachedWorkshopRepository(PrismaWorkshopRepository)
+// findById hits Redis first; only one SQL query on repeated calls.
+Container.register<IWorkshopRepository>(
+  'workshopRepository',
+  () => new CachedWorkshopRepository(new PrismaWorkshopRepository(db), redis)
+);
