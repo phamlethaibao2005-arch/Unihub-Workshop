@@ -9,6 +9,6 @@ export default defineConfig({
   },
   // DIRECT_URL bypasses the Neon pooler — required for Prisma Migrate DDL
   datasource: {
-    url: process.env["DIRECT_URL"] ?? process.env["DATABASE_URL"],
+    url: process.env["DATABASE_URL"],
   },
 });
