@@ -11,6 +11,7 @@ import type { IWorkshopRepository } from '@/modules/workshop/domain/IWorkshopRep
 import { WorkshopStatus } from '@/modules/workshop/domain/WorkshopStatus'
 import { toWorkshopDTO } from '@/shared/types/workshop-presenter'
 
+export const revalidate = 60
 
 const MARQUEE_ITEMS = [
   'AI PIPELINES',
@@ -26,12 +27,16 @@ function getService() {
 }
 
 async function getFeaturedWorkshops() {
-  const result = await getService().list({
-    filters: { status: WorkshopStatus.ACTIVE },
-    page: 1,
-    size: 6,
-  })
-  return result.items.map(toWorkshopDTO)
+  try {
+    const result = await getService().list({
+      filters: { status: WorkshopStatus.ACTIVE },
+      page: 1,
+      size: 6,
+    })
+    return result.items.map(toWorkshopDTO)
+  } catch {
+    return []
+  }
 }
 
 export default async function Home() {
