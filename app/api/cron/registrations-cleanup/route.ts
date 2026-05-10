@@ -1,4 +1,5 @@
 import { db } from '@/shared/infrastructure/PrismaClient'
+import type { Prisma } from '@prisma/client'
 import { redis } from '@/shared/infrastructure/RedisClient'
 import { SeatManager } from '@/modules/registration/domain/SeatManager'
 import type { ISeatStore } from '@/modules/registration/domain/SeatManager'
@@ -22,7 +23,7 @@ export async function GET(req: Request) {
   let cancelled = 0
   for (const reg of stale) {
     try {
-      await db.$transaction(async (tx) => {
+      await db.$transaction(async (tx: Prisma.TransactionClient) => {
         await tx.registration.update({
           where: { id: reg.id },
           data: { status: 'CANCELLED' },
