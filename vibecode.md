@@ -2,14 +2,14 @@
 
 > Sequential prompts to build the entire system. Run them **in order** — each phase depends on the previous.
 > Every prompt assumes the agent reads `blueprint/design.md`, `blueprint/proposal.md`, `blueprint/frontend-rule.md`, `3D_frontend.md`, and the relevant spec in `blueprint/specs/` before coding.
-> Stack: Next.js 16 (App Router) + Prisma 7 + Better-Auth + Tailwind v4 + ShadcnUI + Upstash Redis/Kafka + Neon Postgres + three.js / @react-three/fiber + framer-motion.
+> Stack: Next.js 16 (App Router) + Prisma 7 + Better-Auth + Tailwind v4 + ShadcnUI + Upstash Redis + Upstash QStash + Neon Postgres + three.js / @react-three/fiber + framer-motion.
 
 ---
 
 ## Global rules (paste into CLAUDE.md or system prompt once)
 
 ```
-- Stack: Next.js 16, Prisma 7, Better-Auth, Tailwind v4, ShadcnUI, Upstash Redis, Upstash Kafka, Neon Postgres, Resend, Gemini 2.5 Flash, VNPAY sandbox, three.js + @react-three/fiber, framer-motion.
+- Stack: Next.js 16, Prisma 7, Better-Auth, Tailwind v4, ShadcnUI, Upstash Redis, Upstash QStash, Neon Postgres, Resend, Gemini 2.5 Flash, VNPAY sandbox, three.js + @react-three/fiber, framer-motion.
 - Architecture: Modular Monolith + Clean Architecture. Folders: app/, modules/<name>/{domain,application,infrastructure}, shared/, components/, prisma/.
 - Domain layer imports nothing from outer layers. Application depends only on interfaces.
 - Read `node_modules/next/dist/docs/` before using Next.js APIs — this version has breaking changes.
@@ -36,7 +36,7 @@
 Read blueprint/design.md §4 (DB schema) and blueprint/specs/auth.md.
 
 Tasks:
-1. Create .env.example listing every required var: DATABASE_URL, DIRECT_URL, BETTER_AUTH_SECRET, BETTER_AUTH_URL, UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN, UPSTASH_KAFKA_REST_URL, UPSTASH_KAFKA_REST_USERNAME, UPSTASH_KAFKA_REST_PASSWORD, VNPAY_TMN_CODE, VNPAY_HASH_SECRET, VNPAY_URL, VNPAY_RETURN_URL, GEMINI_API_KEY, RESEND_API_KEY, BLOB_READ_WRITE_TOKEN, QR_HMAC_SECRET.
+1. Create .env.example listing every required var: DATABASE_URL, DIRECT_URL, BETTER_AUTH_SECRET, BETTER_AUTH_URL, UPSTASH_REDIS_REST_URL, UPSTASH_REDIS_REST_TOKEN, QSTASH_TOKEN, QSTASH_CURRENT_SIGNING_KEY, QSTASH_NEXT_SIGNING_KEY, VNPAY_TMN_CODE, VNPAY_HASH_SECRET, VNPAY_URL, VNPAY_RETURN_URL, GEMINI_API_KEY, RESEND_API_KEY, BLOB_READ_WRITE_TOKEN, QR_HMAC_SECRET.
 2. Write prisma/schema.prisma EXACTLY matching design.md §4.2 (User, Session, Account, Verification, Workshop, Registration, Payment, IdempotencyRecord, Checkin, CsvImportLog, NotificationLog and all enums + indexes).
 3. Generate first migration: `prisma migrate dev --name init`.
 4. Create prisma/seed.ts with 1 ORGANIZER, 2 CHECKIN_STAFF, 5 STUDENT users (bcrypt password "password123"), 6 workshops (3 free, 3 paid; mix of dates/capacities).
@@ -55,13 +55,13 @@ Create shared/ files:
 3. shared/domain/DomainEvent.ts — abstract { occurredAt: Date; aggregateId: string }.
 4. shared/infrastructure/PrismaClient.ts — singleton PrismaClient (globalThis pattern for Next.js dev hot reload).
 5. shared/infrastructure/RedisClient.ts — singleton @upstash/redis Redis client from env.
-6. shared/infrastructure/KafkaProducer.ts — @upstash/kafka producer; export `enqueue(topic, payload)`.
+6. shared/infrastructure/QStashClient.ts — `@upstash/qstash` Client singleton; export `enqueue(destinationUrl, payload, opts?)` which calls `client.publishJSON({ url, body: payload, ...opts })`. Also export `verifyQStashSignature(req)` using Receiver with QSTASH_CURRENT/NEXT_SIGNING_KEY — call this at the top of every queue handler route.
 7. shared/infrastructure/EventBus.ts — in-memory pub/sub: `subscribe(eventName, handler)`, `publish(event)`. Handlers are async; failures logged but don't throw.
 8. shared/infrastructure/Container.ts — DI container. Exports `container` with lazy getters for every service we'll add later (start empty, fill as we go).
 9. shared/errors/AppError.ts — class with { code, statusCode, message }; subclasses NotFoundError(404), ConflictError(409), ValidationError(400), UnauthorizedError(401), ForbiddenError(403), RateLimitError(429), ServiceUnavailableError(503).
 10. shared/errors/handle.ts — `toResponse(err)` converts AppError | ZodError | unknown into NextResponse with proper status + JSON body.
 
-Install: @upstash/redis, @upstash/kafka.
+Install: @upstash/redis, @upstash/qstash.
 
 Acceptance: `npx tsc --noEmit` passes.
 ```
@@ -424,10 +424,10 @@ Acceptance: tsc passes; calling notify() with email-down stub → in-app still S
 
 ```
 1. bootstrap.ts at project root — exports `bootstrap()` that subscribes EventBus handlers (RegistrationConfirmed → enqueue notification job, etc.). Called once at module init via shared/infrastructure/Container.
-2. app/api/queue/notifications/route.ts — POST handler invoked by Upstash QStash. Validates QStash signature. Pulls payload, calls NotificationService.notify.
-3. shared/infrastructure/KafkaProducer.ts: helper `enqueueNotification(payload)` publishes to QStash with deduplication-id = userId+type+timestamp.
-4. Wire EventBus listeners in bootstrap to enqueue (NOT call NotificationService directly — keep it async).
-5. WorkshopCancelledEvent handler: fetch all CONFIRMED registrations for workshopId → enqueue 1 job each (rate-limited by QStash to 50/min).
+2. app/api/queue/notifications/route.ts — POST handler invoked by QStash webhook. Call `verifyQStashSignature(req)` first (rejects with 401 if invalid). Parse body, call NotificationService.notify. Always return HTTP 200 (QStash retries on non-2xx).
+3. shared/infrastructure/QStashClient.ts (already created in P0.2): use `enqueue('/api/queue/notifications', payload, { deduplicationId: userId+type+ts, retries: 3 })`.
+4. Wire EventBus listeners in bootstrap to enqueue via QStashClient (NOT call NotificationService directly — keep it async).
+5. WorkshopCancelledEvent handler: fetch all CONFIRMED registrations for workshopId → enqueue 1 job per user with QStash `delay` staggered at 1.2s intervals to stay within Resend 50 emails/min limit.
 6. app/api/notifications/route.ts — GET unread for current user.
 7. app/api/notifications/[id]/read/route.ts — PATCH.
 8. components/NotificationBell.tsx — header bell with unread count (poll /api/notifications/unread-count every 30s).

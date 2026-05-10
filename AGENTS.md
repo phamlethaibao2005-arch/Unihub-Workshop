@@ -67,7 +67,7 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 **These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
 
-- Stack: Next.js 16, Prisma 7, Better-Auth, Tailwind v4, ShadcnUI, Upstash Redis, Upstash Kafka, Neon Postgres, Resend, Gemini 2.5 Flash, VNPAY sandbox, three.js + @react-three/fiber, framer-motion.
+- Stack: Next.js 16, Prisma 7, Better-Auth, Tailwind v4, ShadcnUI, Upstash Redis, Upstash QStash, Neon Postgres, Resend, Gemini 2.5 Flash, VNPAY sandbox, three.js + @react-three/fiber, framer-motion.
 - Architecture: Modular Monolith + Clean Architecture. Folders: app/, modules/<name>/{domain,application,infrastructure}, shared/, components/, prisma/.
 - Domain layer imports nothing from outer layers. Application depends only on interfaces.
 - Read `node_modules/next/dist/docs/` before using Next.js APIs — this version has breaking changes.

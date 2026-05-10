@@ -21,7 +21,7 @@ Triển khai trong `modules/workshop/` — `AISummaryService`, `AISummaryPipelin
    b. Upload file lên Vercel Blob / S3 → nhận pdfUrl
    c. DB Transaction:
       UPDATE Workshop SET pdfUrl = :pdfUrl, aiSummaryStatus = PROCESSING
-   d. Enqueue job vào Kafka "ai-summary-queue":
+   d. Enqueue job via QStash → POST /api/queue/ai-summary:
       { workshopId, pdfUrl }
    e. Response 202: { status: "processing" }  ← trả về ngay, không chờ AI
 
@@ -76,7 +76,7 @@ aiSummaryStatus:
 - Message: "Không thể đọc nội dung PDF. Vui lòng upload PDF có text (không phải ảnh scan)."
 
 ### Gemini API timeout / error
-- Kafka retry: 3 lần với delay 60s → 120s → 240s
+- QStash retry: 3 lần với delay 60s → 120s → 240s (cấu hình qua `retries` và `delay` trong publishJSON)
 - Sau 3 lần → `aiSummaryStatus = FAILED`
 - Organizer có thể: re-upload PDF để trigger lại, hoặc nhập summary thủ công
 

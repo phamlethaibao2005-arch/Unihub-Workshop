@@ -21,7 +21,7 @@ Triển khai trong `modules/csv-import/` — `StudentCSVImportJob` (kế thừa 
 
 3. Với mỗi file tìm thấy:
    a. Move file: incoming/ → processing/
-   b. Enqueue job Kafka "csv-import-queue":
+   b. Enqueue job via QStash → POST /api/queue/csv-import:
       { filename, filepath, triggeredBy: "cron" }
 
 4. StudentCSVImportJob.run(filename):  [BaseImportJob Template Method]
@@ -97,7 +97,7 @@ Triển khai trong `modules/csv-import/` — `StudentCSVImportJob` (kế thừa 
 - Cron timeout Vercel: 300s. Ước tính 100.000 rows × 10ms = ~1000s → cần chunk nhiều file
 
 ### 2 import chạy đồng thời
-- Kafka queue concurrency = 1 cho "csv-import-queue"
+- QStash concurrency: dùng Redis SET NX làm distributed lock ("csv-import:lock") TTL 10 phút — nếu lock tồn tại thì route handler trả 200 ngay (không xử lý), QStash sẽ không retry vì nhận 200
 - Job mới đợi trong queue, không chạy song song
 - Tránh race condition khi upsert cùng student_id
 

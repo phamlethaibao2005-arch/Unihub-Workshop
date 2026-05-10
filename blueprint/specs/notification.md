@@ -64,21 +64,23 @@ EventBus.subscribe("RegistrationConfirmedEvent", async (event) => {
 | `WORKSHOP_UPDATED` | `WorkshopUpdatedEvent` | ✅ | ✅ |
 | `CHECKIN_REMINDER` | Cron 30 phút trước | ❌ | ✅ |
 
-### Async processing qua Kafka/QStash
+### Async processing qua QStash
 
 ```
 Các flow khác (Registration, Payment) publish event → EventBus
-EventBus handler enqueue job vào Kafka "notification-queue":
+EventBus handler enqueue job qua QStash → POST /api/queue/notifications:
   { type, userId, userEmail, data }
 
-NotificationWorker:
-  1. Pull job từ queue
-  2. Build NotificationPayload từ type + data
+QStash gọi /api/queue/notifications (webhook):
+  1. Verify QStash signature (Receiver.verify) → reject 401 nếu sai
+  2. Parse body → build NotificationPayload từ type + data
   3. NotificationService.notify(payload)
      → EmailStrategy: Resend API → HTML template
      → InAppStrategy: INSERT notifications table
   4. Mỗi kênh: log result vào NotificationLog
   → Promise.allSettled → 1 kênh lỗi không ảnh hưởng kênh khác
+  5. Trả HTTP 200 → QStash coi là thành công (không retry)
+     Nếu throw error → trả 500 → QStash tự retry theo schedule
 ```
 
 ### In-app Notification
@@ -100,7 +102,7 @@ NotificationWorker:
 - `EmailStrategy.send()` throws → `Promise.allSettled` catch
 - `InAppStrategy` vẫn chạy và thành công
 - `NotificationLog`: email → "FAILED" (+ errorMessage), in-app → "SENT"
-- Kafka retry: 3 lần với delay 30s → 60s → 120s
+- QStash retry: 3 lần với delay 30s → 60s → 120s (cấu hình `retries: 3` khi publish)
 - Sau 3 lần: mark job failed, log warning. Sinh viên **vẫn nhận in-app notification**.
 
 ### Notification queue backlog (nhiều đăng ký cùng lúc)

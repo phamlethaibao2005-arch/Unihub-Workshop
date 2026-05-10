@@ -30,7 +30,7 @@ Hệ thống được tổ chức theo kiến trúc **Modular Monolith** kết h
 │  Entities, Value Objects, Interfaces, Events       │
 ├────────────────────────────────────────────────────┤
 │  Infrastructure (modules/*/infrastructure/)        │
-│  Prisma Repos, Redis, Kafka, External APIs         │
+│  Prisma Repos, Redis, QStash, External APIs        │
 └────────────────────────────────────────────────────┘
 ```
 
@@ -279,8 +279,8 @@ Hệ thống ngoài:
 │     ┌────────────────────────────┼──────────────────────────────────┐         │
 │     │                            │                                   │         │
 │  ┌──▼───────────────┐   ┌────────▼────────────┐   ┌────────────────▼───┐     │
-│  │  Neon PostgreSQL  │   │  Upstash Redis      │   │  Upstash Kafka     │     │
-│  │  (Primary Store)  │   │  - Seat counters    │   │  (Message Queue)   │     │
+│  │  Neon PostgreSQL  │   │  Upstash Redis      │   │  Upstash QStash    │     │
+│  │  (Primary Store)  │   │  - Seat counters    │   │  (HTTP Job Queue)  │     │
 │  │  Prisma ORM      │   │  - Session cache     │   │  - Notifications   │     │
 │  │  - All entities   │   │  - Rate limit state  │   │  - AI jobs         │     │
 │  │  - Audit logs     │   │  - Circuit Breaker   │   │  - CSV import      │     │
@@ -300,7 +300,7 @@ Hệ thống ngoài:
 |---|---|---|
 | Next.js App | Neon PostgreSQL | TCP (Prisma + Connection Pooling) |
 | Next.js App | Upstash Redis | HTTPS (Upstash REST SDK) |
-| Next.js App | Upstash Kafka | HTTPS (Upstash Kafka REST) |
+| Next.js App | Upstash QStash | HTTPS (QStash REST API) |
 | Next.js App | VNPAY | HTTPS (REST, HMAC-SHA512 signature) |
 | Next.js App | Gemini AI | HTTPS (Google AI REST) |
 | Next.js App | Resend/SMTP | HTTPS / SMTP |
@@ -351,9 +351,9 @@ Hệ thống ngoài:
               │            │                     │            │
      ┌────────▼───┐ ┌──────▼─────┐  ┌───────────▼──┐ ┌──────▼──────┐
      │   Neon     │ │  Upstash   │  │  Upstash     │ │  Vercel     │
-     │ PostgreSQL │ │   Redis    │  │  Kafka/QStash│ │   Blob/S3   │
-     │ (Source of │ │  (Fast     │  │  (Async      │ │  (PDF       │
-     │  truth)    │ │  ops)      │  │  jobs)       │ │  storage)   │
+     │ PostgreSQL │ │   Redis    │  │  QStash      │ │   Blob/S3   │
+     │ (Source of │ │  (Fast     │  │  (Async HTTP │ │  (PDF       │
+     │  truth)    │ │  ops)      │  │  job queue)  │ │  storage)   │
      └────────────┘ └────────────┘  └──────────────┘ └─────────────┘
 
   Check-in Offline Flow:
@@ -952,7 +952,7 @@ TTL 24h: Đủ cho một phiên thanh toán (VNPAY redirect flow < 15 phút)
 - **Lý do:** Tránh deadlock khi nhiều user cùng UPDATE. Rollback nhanh nếu version mismatch.
 - **Đánh đổi:** Client phải retry khi conflict (hiếm xảy ra với 60 chỗ/workshop).
 
-### ADR-005: Upstash Kafka cho async jobs thay vì BullMQ + Redis
-- **Quyết định:** Upstash Kafka / QStash cho message queue
-- **Lý do:** BullMQ cần Redis persistent connection — khó với Serverless (cold start). Upstash Kafka là managed, REST-based.
-- **Đánh đổi:** Kafka có latency cao hơn BullMQ in-memory. Chấp nhận được cho notification và AI jobs (không real-time).
+### ADR-005: Upstash QStash cho async jobs thay vì BullMQ + Redis hoặc Kafka
+- **Quyết định:** Upstash QStash cho message queue
+- **Lý do:** BullMQ cần Redis persistent connection — không tương thích Serverless. Upstash Kafka đã bị deprecated. QStash là HTTP-based, push-to-webhook, native cho Vercel: publish một HTTP call → QStash gọi lại API route của mình như webhook, có built-in retry và deduplication.
+- **Đánh đổi:** Latency cao hơn BullMQ in-memory (~100–500ms). Chấp nhận được cho notification và AI jobs (không yêu cầu real-time).
