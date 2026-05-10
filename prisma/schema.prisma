@@ -1,0 +1,230 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// AUTH (Better Auth standard schema)
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  emailVerified Boolean   @default(false)
+  name          String
+  image         String?
+  studentId     String?   @unique
+  role          Role      @default(STUDENT)
+
+  accounts      Account[]
+  sessions      Session[]
+  registrations Registration[]
+  checkins      Checkin[]       @relation("StaffCheckins")
+  notifications NotificationLog[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum Role {
+  STUDENT
+  ORGANIZER
+  CHECKIN_STAFF
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  expiresAt DateTime
+  token     String   @unique
+  ipAddress String?
+  userAgent String?
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model Account {
+  id                   String    @id @default(cuid())
+  accountId            String
+  providerId           String
+  userId               String
+  accessToken          String?
+  refreshToken         String?
+  idToken              String?
+  accessTokenExpiresAt DateTime?
+  scope                String?
+  password             String?
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  @@unique([providerId, accountId])
+  @@index([userId])
+}
+
+model Verification {
+  id         String   @id @default(cuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+}
+
+// CORE: WORKSHOP
+model Workshop {
+  id                   String         @id @default(cuid())
+  title                String
+  description          String?
+  speaker              String
+  room                 String
+  roomMapUrl           String?
+
+  date      DateTime @db.Date
+  startTime DateTime
+  endTime   DateTime
+
+  maxCapacity          Int
+  currentRegistrations Int            @default(0)
+  version              Int            @default(0)
+  price                Int            @default(0)
+  status               WorkshopStatus @default(ACTIVE)
+
+  aiSummary       String?
+  aiSummaryStatus AISummaryStatus @default(NONE)
+  pdfUrl          String?
+
+  registrations Registration[]
+  createdBy     String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([date, status])
+}
+
+enum WorkshopStatus {
+  ACTIVE
+  CANCELLED
+  COMPLETED
+}
+
+enum AISummaryStatus {
+  NONE
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+// CORE: REGISTRATION
+model Registration {
+  id         String             @id @default(cuid())
+  userId     String
+  workshopId String
+  status     RegistrationStatus @default(PENDING)
+
+  qrCode      String? @unique
+  qrSignature String?
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workshop Workshop @relation(fields: [workshopId], references: [id], onDelete: Cascade)
+  payment  Payment?
+  checkin  Checkin?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, workshopId])
+  @@index([workshopId, status])
+}
+
+enum RegistrationStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  PAYMENT_FAILED
+}
+
+// PAYMENT
+model Payment {
+  id             String        @id @default(cuid())
+  registrationId String        @unique
+  amount         Int
+  idempotencyKey String        @unique
+  vnpayTxnRef    String?       @unique
+  status         PaymentStatus @default(PENDING)
+  paidAt         DateTime?
+
+  registration Registration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@index([idempotencyKey])
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  REFUNDED
+}
+
+model IdempotencyRecord {
+  key       String   @id
+  response  Json
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([expiresAt])
+}
+
+// CHECK-IN
+model Checkin {
+  id              String     @id @default(cuid())
+  registrationId  String     @unique
+  checkedInBy     String
+  checkedInAt     DateTime
+  syncStatus      SyncStatus @default(SYNCED)
+  syncedAt        DateTime?
+  offlineDeviceId String?
+
+  registration Registration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+  staff        User         @relation("StaffCheckins", fields: [checkedInBy], references: [id])
+
+  @@index([checkedInBy])
+}
+
+enum SyncStatus {
+  SYNCED
+  PENDING_SYNC
+}
+
+// INFRA LOGS
+model CsvImportLog {
+  id             String   @id @default(cuid())
+  filename       String
+  totalRows      Int
+  successCount   Int
+  errorCount     Int
+  duplicateCount Int
+  errorDetails   Json?
+  status         String
+  processedAt    DateTime @default(now())
+}
+
+model NotificationLog {
+  id           String   @id @default(cuid())
+  userId       String
+  channel      String
+  type         String
+  status       String
+  errorMessage String?
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+
+  @@index([userId, status])
+}
