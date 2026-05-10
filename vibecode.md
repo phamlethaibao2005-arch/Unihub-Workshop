@@ -77,7 +77,7 @@ Read blueprint/frontend-rule.md and 3D_frontend.md §5–§7.
    - Inter (subsets latin + vietnamese, weights 300-900, variable --font-inter).
    - Bebas_Neue (weight 400, variable --font-bebas).
    - JetBrains_Mono (weights 400/500/700, variable --font-mono).
-   <html lang="vi" gets all three .variable classes; <body className="font-sans bg-white text-[#111111] antialiased">.
+   <html lang="vi" gets all three .variable classes; <body className="font-sans bg-white text-ink antialiased">.
 
 3. app/globals.css — replace contents with the block from 3D_frontend.md §5 verbatim. This defines:
    - CSS vars: --ink, --canvas, --cloud, --hairline, --red, --emerald, --cyan, --violet.
@@ -174,7 +174,7 @@ Refer 3D_frontend.md §8 (AuthPage row) — auth pages use a 2D NetworkCanvas be
 
 2. app/(auth)/layout.tsx — full-bleed white. Children render centered max-w-[440px] with NetworkCanvas absolute inset-0 z-0 (pointer-events-none) and the form z-10.
 
-3. app/(auth)/login/page.tsx — Bebas eyebrow "UNIHUB / ACCESS" 11px uppercase tracking-[0.25em]; .font-display 48px headline "Đăng Nhập"; Inter form (email + password) using ShadcnUI Form + Zod, inputs with .hairline border + rounded-md 24px; submit = <PillButton variant="primary">Tiếp Tục <ArrowRight/></PillButton>; small link below to /signup. On submit: authClient.signIn.email → redirect by role (STUDENT→/workshops, ORGANIZER→/admin/dashboard, CHECKIN_STAFF→/scan).
+3. app/(auth)/signin/page.tsx — Bebas eyebrow "UNIHUB / ACCESS" 11px uppercase tracking-[0.25em]; .font-display 48px headline "Đăng Nhập"; Inter form (email + password) using ShadcnUI Form + Zod, inputs with .hairline border + rounded-md 24px; submit = <PillButton variant="primary">Tiếp Tục <ArrowRight/></PillButton>; small link below to /signup. On submit: authClient.signIn.email → redirect by role (STUDENT→/workshops, ORGANIZER→/admin/dashboard, CHECKIN_STAFF→/scan).
 
 4. app/(auth)/signup/page.tsx — same skeleton, headline "Tạo Tài Khoản"; default role STUDENT.
 

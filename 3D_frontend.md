@@ -190,10 +190,10 @@ type Hero3DProps = {
 export function Hero3D({ onCta }: Hero3DProps) {
   return (
     <section className="relative bg-white border-b border-hairline">
-      <div className="relative h-[88vh] min-h-[640px] overflow-hidden">
-        <div className="absolute top-6 left-6 right-6 z-20 flex items-start justify-between text-[11px] tracking-[0.2em] uppercase text-[#111111]/70">
+      <div className="relative h-[88vh] min-h-160 overflow-hidden">
+        <div className="absolute top-6 left-6 right-6 z-20 flex items-start justify-between text-[11px] tracking-[0.2em] uppercase text-ink/70">
           <div className="flex items-center gap-2">
-            <span className="w-1.5 h-1.5 bg-[#06b6d4] dot-blink" />
+            <span className="w-1.5 h-1.5 bg-cyan dot-blink" />
             Live Campaign / Q3.2025
           </div>
           <div className="hidden md:flex items-center gap-6">
@@ -206,11 +206,11 @@ export function Hero3D({ onCta }: Hero3DProps) {
 
         <div className="absolute inset-0 z-10 flex flex-col justify-end pb-[6vh] pointer-events-none">
           <div className="px-6 md:px-10 pointer-events-auto">
-            <div className="text-[11px] uppercase tracking-[0.25em] text-[#111111]/60 mb-3">
+            <div className="text-[11px] uppercase tracking-[0.25em] text-ink/60 mb-3">
               UniHub Workshop / Drop 03
             </div>
             <h1
-              className="font-display uppercase text-[#111111] leading-[0.85] tracking-[-0.02em] max-w-[1100px]"
+              className="font-display uppercase text-ink leading-[0.85] tracking-[-0.02em] max-w-275"
               style={{ fontSize: 'clamp(56px, 9.2vw, 132px)' }}
             >
               Buoc Vao<br />Khong Gian Tri Thuc<br />
@@ -230,7 +230,7 @@ export function Hero3D({ onCta }: Hero3DProps) {
           </div>
         </div>
 
-        <div className="absolute bottom-6 right-6 z-20 hidden md:flex flex-col items-end text-[#111111]">
+        <div className="absolute bottom-6 right-6 z-20 hidden md:flex flex-col items-end text-ink">
           <div className="text-[11px] uppercase tracking-[0.25em] opacity-60">Engaged Cohort</div>
           <div className="font-display text-5xl tabular leading-none mt-1">12,408</div>
           <div className="text-[11px] uppercase tracking-[0.25em] opacity-60 mt-1">Sinh vien / 24 truong</div>
@@ -510,7 +510,7 @@ type RootLayoutProps = {
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="vi" className={`${inter.variable} ${bebas.variable} ${mono.variable}`}>
-      <body className="font-sans bg-white text-[#111111] antialiased">{children}</body>
+      <body className="font-sans bg-white text-ink antialiased">{children}</body>
     </html>
   )
 }

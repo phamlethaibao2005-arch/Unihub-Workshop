@@ -6,7 +6,6 @@ import { Ratelimit } from "@upstash/ratelimit"
 const SESSION_COOKIE = "better-auth.session_token"
 const SESSION_TTL = 60 // seconds
 
-// Edge-compatible Redis (REST/HTTP — no TCP)
 const redis = new Redis({
   url: process.env.UPSTASH_REDIS_REST_URL!,
   token: process.env.UPSTASH_REDIS_REST_TOKEN!,
@@ -24,23 +23,18 @@ const loginRatelimit = new Ratelimit({
 // ---------------------------------------------------------------------------
 
 function isPublicRoute(pathname: string, method: string): boolean {
-  // Next.js internals and static assets
   if (
     pathname.startsWith("/_next/") ||
     pathname.startsWith("/favicon") ||
     /\.(ico|png|jpe?g|svg|webp|woff2?|ttf|css|js|map)$/.test(pathname)
   ) return true
 
-  // Better-Auth routes are always public
   if (pathname.startsWith("/api/auth/")) return true
 
-  // Public pages
-  if (pathname === "/" || pathname === "/signin" || pathname === "/signup") return true
+  if (pathname === "/" || pathname === "/login" || pathname === "/signup") return true
 
-  // Workshop browsing
   if (pathname === "/workshops" || pathname.startsWith("/workshops/")) return true
 
-  // Workshop API — read-only access
   if (pathname === "/api/workshops" && method === "GET") return true
   if (/^\/api\/workshops\/[^/]+$/.test(pathname) && method === "GET") return true
 
@@ -69,11 +63,9 @@ async function lookupSession(req: NextRequest): Promise<CachedSession | null> {
   const token = req.cookies.get(SESSION_COOKIE)?.value
   if (!token) return null
 
-  // Fast path: Redis cache
   const cached = await redis.get<CachedSession>(`session:${token}`)
   if (cached) return cached
 
-  // Slow path: validate via Better-Auth (warms cache for next hit)
   try {
     const url = new URL("/api/auth/get-session", req.url)
     const res = await fetch(url.toString(), {
@@ -92,7 +84,7 @@ async function lookupSession(req: NextRequest): Promise<CachedSession | null> {
 }
 
 // ---------------------------------------------------------------------------
-// Proxy — runs on every request matched by config.matcher
+// Proxy entry point
 // ---------------------------------------------------------------------------
 
 export async function proxy(req: NextRequest): Promise<NextResponse> {
@@ -100,7 +92,7 @@ export async function proxy(req: NextRequest): Promise<NextResponse> {
   const method = req.method
   const isApi = pathname.startsWith("/api/")
 
-  // ── Rate-limit /api/auth/sign-in/email ──────────────────────────────────
+  // Rate-limit sign-in
   if (pathname === "/api/auth/sign-in/email" && method === "POST") {
     const ip =
       req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "anonymous"
@@ -113,12 +105,10 @@ export async function proxy(req: NextRequest): Promise<NextResponse> {
     }
   }
 
-  // ── Public routes pass straight through ─────────────────────────────────
   if (isPublicRoute(pathname, method)) {
     return NextResponse.next()
   }
 
-  // ── Require a valid session ──────────────────────────────────────────────
   const session = await lookupSession(req)
 
   if (!session) {
@@ -133,7 +123,6 @@ export async function proxy(req: NextRequest): Promise<NextResponse> {
     return NextResponse.redirect(loginUrl)
   }
 
-  // ── Role gate ────────────────────────────────────────────────────────────
   const required = getRequiredRole(pathname, method)
   if (required && session.user.role !== required) {
     if (isApi) {
@@ -149,8 +138,5 @@ export async function proxy(req: NextRequest): Promise<NextResponse> {
 }
 
 export const config = {
-  matcher: [
-    // Run on all paths except Next.js static file serving internals
-    "/((?!_next/static|_next/image|favicon.ico).*)",
-  ],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
 }
