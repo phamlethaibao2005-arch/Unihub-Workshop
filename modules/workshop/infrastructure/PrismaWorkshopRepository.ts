@@ -74,6 +74,8 @@ export class PrismaWorkshopRepository implements IWorkshopRepository {
         { speaker: { contains: filters.search, mode: 'insensitive' } },
       ]
     }
+    if (filters?.priceFilter === 'free') where.price = 0
+    if (filters?.priceFilter === 'paid') where.price = { gt: 0 }
 
     const [rows, total] = await this.prisma.$transaction([
       this.prisma.workshop.findMany({ where, skip, take: size, orderBy: { date: 'asc' } }),

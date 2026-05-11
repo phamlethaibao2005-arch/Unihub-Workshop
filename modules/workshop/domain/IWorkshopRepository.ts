@@ -5,6 +5,7 @@ export interface WorkshopFilters {
   date?: Date
   status?: WorkshopStatus
   search?: string
+  priceFilter?: 'free' | 'paid'
 }
 
 export interface PaginatedResult<T> {

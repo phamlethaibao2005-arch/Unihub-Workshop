@@ -10,9 +10,7 @@ import { createPaymentFailedEvent } from '../domain/events/PaymentFailedEvent'
 import type { IIdempotencyService } from './IIdempotencyService'
 import type { IRegistrationRepository } from '@/modules/registration/domain/IRegistrationRepository'
 import type { SeatManager } from '@/modules/registration/domain/SeatManager'
-
-const QR_SECRET = () => process.env.QR_HMAC_SECRET ?? 'dev-secret'
-const BASE_URL = () => process.env.BETTER_AUTH_URL!
+import { qrHmacSecret, appBaseUrl } from '@/shared/config/env'
 
 export interface CallbackResult {
   RspCode: string
@@ -42,7 +40,7 @@ export class PaymentService implements IPaymentService {
     const registration = await this.registrationRepo.findById(registrationId)
     if (!registration) throw new NotFoundError('Registration not found')
 
-    const returnUrl = `${BASE_URL()}/workshops/${registration.workshopId}/payment-result?txnRef=${payment.id}`
+    const returnUrl = `${appBaseUrl()}/workshops/${registration.workshopId}/payment-result?txnRef=${payment.id}`
 
     return this.idempotencyService.runOnce(`payment:url:${payment.id}`, 24, async () => {
       const paymentUrl = await this.gateway.createPaymentUrl({
@@ -50,7 +48,7 @@ export class PaymentService implements IPaymentService {
         orderId: payment.id,
         description: `Thanh toan workshop ${registrationId.slice(-8).toUpperCase()}`,
         returnUrl,
-        ipnUrl: `${BASE_URL()}/api/payments/vnpay-callback`,
+        ipnUrl: `${appBaseUrl()}/api/payments/vnpay-callback`,
         ipAddress,
       })
       return { paymentUrl }
@@ -128,7 +126,7 @@ export class PaymentService implements IPaymentService {
       })
       if (registration) {
         registration.confirm()
-        registration.generateQR(QR_SECRET())
+        registration.generateQR(qrHmacSecret())
         await tx.registration.update({
           where: { id: registration.id },
           data: { status: 'CONFIRMED', qrCode: registration.qrCode, qrSignature: registration.qrSignature },

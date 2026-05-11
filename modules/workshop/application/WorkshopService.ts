@@ -7,6 +7,8 @@ import type { IWorkshopRepository, WorkshopFilters, PaginatedResult } from '../d
 import { createWorkshopCancelledEvent } from '../domain/events/WorkshopCancelledEvent'
 import { createWorkshopUpdatedEvent } from '../domain/events/WorkshopUpdatedEvent'
 
+const CONCURRENT_UPDATE_ERROR = 'Workshop was modified concurrently, please retry'
+
 export class WorkshopService {
   constructor(
     private readonly repo: IWorkshopRepository,
@@ -60,7 +62,7 @@ export class WorkshopService {
     const expectedVersion = workshop.version
     workshop.update(patch)
     const success = await this.repo.update(workshop, expectedVersion)
-    if (!success) throw new ConflictError('Update conflict — workshop was modified concurrently, please retry')
+    if (!success) throw new ConflictError(CONCURRENT_UPDATE_ERROR)
     await this.eventBus.publish(
       createWorkshopUpdatedEvent(id, Object.keys(patch))
     )
@@ -72,7 +74,7 @@ export class WorkshopService {
     const expectedVersion = workshop.version
     workshop.cancel()
     const success = await this.repo.update(workshop, expectedVersion)
-    if (!success) throw new ConflictError('Update conflict — workshop was modified concurrently, please retry')
+    if (!success) throw new ConflictError(CONCURRENT_UPDATE_ERROR)
     await this.eventBus.publish(
       createWorkshopCancelledEvent(id, workshop.title)
     )

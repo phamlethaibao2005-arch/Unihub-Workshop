@@ -10,8 +10,7 @@ import { Registration } from '../domain/Registration'
 import { RegistrationStatus } from '../domain/RegistrationStatus'
 import { createRegistrationConfirmedEvent } from '../domain/events/RegistrationConfirmedEvent'
 import { createRegistrationCancelledEvent } from '../domain/events/RegistrationCancelledEvent'
-
-const QR_SECRET = () => process.env.QR_HMAC_SECRET ?? 'dev-secret'
+import { qrHmacSecret } from '@/shared/config/env'
 
 export interface RegisterResult {
   registrationId: string
@@ -85,7 +84,7 @@ export class RegistrationService {
               qrSignature: null,
               createdAt: new Date(),
             })
-            reg.generateQR(QR_SECRET())
+            reg.generateQR(qrHmacSecret())
 
             await tx.registration.create({
               data: {

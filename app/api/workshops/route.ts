@@ -31,34 +31,34 @@ export async function GET(req: Request) {
     const url = new URL(req.url)
     const page = parsePage(url.searchParams.get('page'))
     const date = parseDate(url.searchParams.get('date'))
-    const category = url.searchParams.get('category')?.trim().toLowerCase()
-    const priceFilter = url.searchParams.get('priceFilter')
+    const category = url.searchParams.get('category')?.trim().toLowerCase() || undefined
+    const priceFilter = (url.searchParams.get('priceFilter') || undefined) as
+      | 'free'
+      | 'paid'
+      | undefined
 
-    const result = await getService().list({
-      filters: {
-        status: WorkshopStatus.ACTIVE,
-        date,
-      },
-      page: 1,
-      size: 500,
-    })
+    const filters = { status: WorkshopStatus.ACTIVE, date, priceFilter }
 
-    let allItems = result.items.map(toWorkshopDTO)
-
+    // category is derived from description at runtime, cannot be filtered in DB
     if (category) {
-      allItems = allItems.filter((item) => item.category.toLowerCase().includes(category))
-    }
-    if (priceFilter === 'free') {
-      allItems = allItems.filter((item) => item.price === 0)
-    }
-    if (priceFilter === 'paid') {
-      allItems = allItems.filter((item) => item.price > 0)
+      const { items } = await getService().list({ filters, page: 1, size: 500 })
+      const filtered = items
+        .map(toWorkshopDTO)
+        .filter((w) => w.category.toLowerCase().includes(category))
+      const start = (page - 1) * PAGE_SIZE
+      return NextResponse.json({
+        items: filtered.slice(start, start + PAGE_SIZE),
+        page,
+        total: filtered.length,
+      })
     }
 
-    const start = (page - 1) * PAGE_SIZE
-    const items = allItems.slice(start, start + PAGE_SIZE)
-
-    return NextResponse.json({ items, page, total: allItems.length })
+    const result = await getService().list({ filters, page, size: PAGE_SIZE })
+    return NextResponse.json({
+      items: result.items.map(toWorkshopDTO),
+      page: result.page,
+      total: result.total,
+    })
   } catch (err) {
     unstable_rethrow(err)
     return toResponse(err)
