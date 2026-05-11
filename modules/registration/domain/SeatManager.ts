@@ -30,6 +30,18 @@ export class SeatManager {
     return val ?? 0
   }
 
+  async initIfMissing(workshopId: string, available: number): Promise<void> {
+    const existing = await this.store.get<number>(this.key(workshopId))
+    // Re-seed if key is absent OR stuck at 0 while DB still has capacity.
+    // The stuck-at-0 case happens when a previous cold-start attempt ran
+    // DECR on a non-existent key (Redis implicitly starts at 0 → goes to -1),
+    // then INCR rolled it back to 0, leaving a stale key that blocks all future reservations.
+    if (existing === null || (existing <= 0 && available > 0)) {
+      await this.store.set(this.key(workshopId), available)
+      await this.store.set(this.maxKey(workshopId), available)
+    }
+  }
+
   async tryReserve(workshopId: string): Promise<boolean> {
     const after = await this.store.decr(this.key(workshopId))
     if (after < 0) {

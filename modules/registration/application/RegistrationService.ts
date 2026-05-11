@@ -44,6 +44,12 @@ export class RegistrationService {
       const existing = await this.registrationRepo.findByUserAndWorkshop(userId, workshopId)
       if (existing) throw new ConflictError('ALREADY_REGISTERED')
 
+      // Seed Redis counter on cold-start (missing key → DECR returns -1 = false positive full)
+      await this.seatManager.initIfMissing(
+        workshopId,
+        workshop.maxCapacity - workshop.currentRegistrations,
+      )
+
       // Fast-path: atomic Redis DECR — only maxCapacity callers may proceed
       const reserved = await this.seatManager.tryReserve(workshopId)
       if (!reserved) throw new ConflictError('WORKSHOP_FULL')

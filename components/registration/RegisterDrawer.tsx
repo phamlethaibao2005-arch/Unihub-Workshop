@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import {
   Drawer,
@@ -33,7 +32,6 @@ export function RegisterDrawer({
   workshopLocation,
   workshopPrice,
 }: RegisterDrawerProps) {
-  const router = useRouter()
   const [loading, setLoading] = useState(false)
   const idempotencyKey = useState(() => crypto.randomUUID())[0]
 
@@ -51,14 +49,11 @@ export function RegisterDrawer({
 
       const data = await res.json()
 
-      if (res.status === 401) {
-        router.push(`/login?redirect=${encodeURIComponent(window.location.pathname)}`)
-        return
-      }
-
       if (!res.ok) {
         const code = data.code as string
-        if (code === 'CONFLICT' && data.error === 'ALREADY_REGISTERED') {
+        if (res.status === 401) {
+          toast.error('Vui lòng đăng nhập để đăng ký')
+        } else if (code === 'CONFLICT' && data.error === 'ALREADY_REGISTERED') {
           toast.error('Bạn đã đăng ký workshop này')
         } else if (code === 'CONFLICT' && data.error === 'WORKSHOP_FULL') {
           toast.error('Rất tiếc, workshop đã hết chỗ')
@@ -72,7 +67,6 @@ export function RegisterDrawer({
 
       if (data.status === 'CONFIRMED') {
         toast.success('Đăng ký thành công! Vé đã được gửi.')
-        router.push('/my-registrations')
       } else if (data.paymentUrl) {
         window.location.href = data.paymentUrl
       }
