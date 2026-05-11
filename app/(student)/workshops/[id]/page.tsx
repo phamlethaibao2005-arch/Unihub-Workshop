@@ -4,7 +4,6 @@ import { ChevronDown } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Footer } from '@/components/Footer'
 import { LiveSeatBar } from '@/components/landing/LiveSeatBar'
-import { Nav } from '@/components/landing/Nav'
 import { getSession } from '@/lib/session'
 import { RegisterCTA } from '@/components/registration/RegisterCTA'
 import { AISummaryStatus } from '@/modules/workshop/domain/AISummaryStatus'
@@ -141,7 +140,6 @@ export default async function WorkshopDetailPage({
 
   return (
     <main className="bg-canvas pb-24 text-ink">
-      <Nav />
 
       <section className="bg-ink text-white">
         <div className="grid grid-cols-1 items-center gap-10 px-4 py-12 md:px-6 lg:grid-cols-[1.1fr_0.9fr] lg:px-10">

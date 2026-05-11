@@ -1,6 +1,5 @@
 import Link from 'next/link'
 import { Footer } from '@/components/Footer'
-import { Nav } from '@/components/landing/Nav'
 import { WorkshopGrid } from '@/components/landing/WorkshopGrid'
 import { cn } from '@/lib/utils'
 import { WorkshopService } from '@/modules/workshop/application/WorkshopService'
@@ -104,7 +103,6 @@ export default async function WorkshopsPage({
 
   return (
     <main className="bg-canvas pb-16 text-ink">
-      <Nav />
 
       <section className="px-4 py-12 md:px-6 lg:px-10">
         <p className="text-[11px] uppercase tracking-[0.25em] text-ink/60">UNIHUB / WORKSHOPS</p>
