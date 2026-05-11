@@ -6,6 +6,7 @@ import { VNPayGateway } from '@/modules/payment/infrastructure/VNPayGateway'
 import { PaymentGatewayCircuitBreaker } from '@/modules/payment/infrastructure/PaymentGatewayCircuitBreaker'
 import { db } from './PrismaClient'
 import { redis } from './RedisClient'
+import '@/bootstrap'
 
 type Factory<T> = () => T;
 
