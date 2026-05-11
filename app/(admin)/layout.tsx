@@ -11,7 +11,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   return (
     <div className="flex min-h-screen">
       {/* Left rail */}
-      <aside className="fixed left-0 top-0 flex h-full w-[220px] flex-col border-r border-hairline bg-cloud">
+      <aside className="fixed left-0 top-0 flex h-full w-55 flex-col border-r border-hairline bg-cloud">
         <div className="border-b border-hairline px-6 py-5">
           <span className="font-display text-[20px] uppercase leading-none text-ink">
             UNIHUB / OPS

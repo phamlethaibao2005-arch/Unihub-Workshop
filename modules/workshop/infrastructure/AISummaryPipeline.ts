@@ -1,4 +1,5 @@
-import pdfParse from 'pdf-parse'
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const pdfParse = require('pdf-parse/lib/pdf-parse.js') as (buf: Buffer) => Promise<{ text: string }>
 import { GoogleGenAI } from '@google/genai'
 
 const SYSTEM_PROMPT =
@@ -129,7 +130,8 @@ export class GeminiSummarizeFilter {
       return summary
     } catch (err) {
       if (err instanceof GeminiSummarizeError) throw err
-      throw new GeminiSummarizeError('Gemini summarization failed')
+      const detail = err instanceof Error ? err.message : String(err)
+      throw new GeminiSummarizeError(`Gemini summarization failed: ${detail}`)
     }
   }
 }

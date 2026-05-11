@@ -36,14 +36,17 @@ export async function POST(req: NextRequest) {
   }
 
   const retryCount = Number(req.headers.get('upstash-retry-count') ?? 0)
-  const shouldMarkFailed = Number.isFinite(retryCount) && retryCount >= 3
+  // Mark failed on any retry so the workshop never stays stuck in PROCESSING
+  const shouldMarkFailed = true
 
   try {
     await buildService().processPDF(payload.workshopId, payload.pdfUrl, {
       markFailed: shouldMarkFailed,
     })
-  } catch {
-    return NextResponse.json({ error: 'Processing failed' }, { status: 500 })
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err)
+    console.error(`[AISummary] workshopId=${payload.workshopId} retry=${retryCount}`, err)
+    return NextResponse.json({ error: 'Processing failed', detail: message }, { status: 500 })
   }
 
   return NextResponse.json({ ok: true })
