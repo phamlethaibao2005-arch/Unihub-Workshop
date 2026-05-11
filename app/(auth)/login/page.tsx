@@ -76,8 +76,8 @@ export default function LoginPage() {
     setSocialLoading(provider)
     const { data, error } = await signIn.social({
       provider,
-      callbackURL: '/workshops',
-      newUserCallbackURL: '/workshops',
+      callbackURL: '/callback',
+      newUserCallbackURL: '/callback',
       errorCallbackURL: '/login',
     })
 

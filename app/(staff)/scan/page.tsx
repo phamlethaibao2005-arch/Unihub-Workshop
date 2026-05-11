@@ -107,6 +107,7 @@ export default function ScanPage() {
 
   useEffect(() => {
     refreshCounts()
+    if (navigator.onLine) syncPending()
 
     const handleOnline = () => {
       setOnline(true)
