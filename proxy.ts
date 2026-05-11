@@ -4,6 +4,7 @@ import { Redis } from "@upstash/redis"
 import { Ratelimit } from "@upstash/ratelimit"
 
 const SESSION_COOKIE = "better-auth.session_token"
+const SESSION_COOKIE_SECURE = "__Secure-better-auth.session_token"
 const SESSION_TTL = 60 // seconds
 
 const hasRedisConfig = Boolean(
@@ -66,8 +67,12 @@ function getRoleProtectedRoute(pathname: string): RequiredRole | null {
 
 type CachedSession = { user: { role: string } }
 
+function getSessionToken(req: NextRequest): string | undefined {
+  return req.cookies.get(SESSION_COOKIE_SECURE)?.value ?? req.cookies.get(SESSION_COOKIE)?.value
+}
+
 async function lookupSession(req: NextRequest): Promise<CachedSession | null> {
-  const token = req.cookies.get(SESSION_COOKIE)?.value
+  const token = getSessionToken(req)
   if (!token) return null
 
   if (redis) {
@@ -155,7 +160,7 @@ export async function proxy(req: NextRequest): Promise<NextResponse> {
 
   // Page routes (non-role): require session cookie to exist.
   // The actual session validity is checked by the page's server components.
-  const hasCookie = Boolean(req.cookies.get(SESSION_COOKIE)?.value)
+  const hasCookie = Boolean(getSessionToken(req))
   if (!hasCookie) {
     const loginUrl = new URL("/login", req.url)
     loginUrl.searchParams.set("next", pathname)
