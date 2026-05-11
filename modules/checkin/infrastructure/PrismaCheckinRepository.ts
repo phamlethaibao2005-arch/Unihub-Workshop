@@ -58,6 +58,7 @@ export class PrismaCheckinRepository implements ICheckinRepository {
         id: true,
         workshopId: true,
         qrCode: true,
+        qrSignature: true,
         user: { select: { name: true, studentId: true } },
         checkin: { select: { id: true } },
       },
@@ -69,6 +70,7 @@ export class PrismaCheckinRepository implements ICheckinRepository {
       studentName: row.user.name,
       studentId: row.user.studentId,
       qrCode: row.qrCode!,
+      qrSignature: row.qrSignature,
       checkedIn: row.checkin !== null,
     }))
   }

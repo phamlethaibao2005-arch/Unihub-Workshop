@@ -6,6 +6,7 @@ export interface PreloadTicket {
   studentName: string
   studentId: string | null
   qrCode: string
+  qrSignature: string | null
   checkedIn: boolean
 }
 

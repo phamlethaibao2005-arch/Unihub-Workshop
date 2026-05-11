@@ -237,6 +237,7 @@ describe('CheckinService.preload', () => {
         studentName: 'Nguyen Van A',
         studentId: '22127001',
         qrCode: 'UNIHUB-reg-1-123',
+        qrSignature: null,
         checkedIn: false,
       },
     ])
