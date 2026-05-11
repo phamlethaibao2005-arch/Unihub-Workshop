@@ -20,7 +20,8 @@ model User {
   sessions      Session[]
   registrations Registration[]
   checkins      Checkin[]       @relation("StaffCheckins")
-  notifications NotificationLog[]
+  notifications     NotificationLog[]
+  notificationItems Notification[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -214,6 +215,21 @@ model CsvImportLog {
   errorDetails   Json?
   status         String
   processedAt    DateTime @default(now())
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String
+  title     String
+  body      String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read])
+  @@index([createdAt])
 }
 
 model NotificationLog {

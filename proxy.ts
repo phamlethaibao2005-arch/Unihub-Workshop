@@ -45,6 +45,12 @@ function isPublicRoute(pathname: string, method: string): boolean {
 
   if (pathname === "/api/workshops" && method === "GET") return true
   if (/^\/api\/workshops\/[^/]+$/.test(pathname) && method === "GET") return true
+  // SSE seat stream is public — no auth required
+  if (/^\/api\/workshops\/[^/]+\/seats\/stream$/.test(pathname)) return true
+  // VNPAY IPN callback — authenticated by HMAC signature, not session
+  if (pathname === "/api/payments/vnpay-callback") return true
+  // QStash notification webhook — authenticated by QStash signature
+  if (pathname === "/api/queue/notifications") return true
 
   return false
 }
