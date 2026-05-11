@@ -34,7 +34,7 @@ export default async function ProfilePage() {
       {/* Back */}
       <Link
         href="/workshops"
-        className="inline-flex items-center gap-1.5 text-[12px] uppercase tracking-[0.1em] text-ink/40 hover:text-ink transition-colors mb-8"
+        className="inline-flex items-center gap-1.5 text-[12px] uppercase tracking-widest text-ink/40 hover:text-ink transition-colors mb-8"
       >
         ← Khám phá workshops
       </Link>

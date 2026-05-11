@@ -1,4 +1,5 @@
 import QRCode from 'qrcode'
+import { put } from '@vercel/blob'
 import { EventBus } from '@/shared/infrastructure/EventBus'
 import { enqueue } from '@/shared/infrastructure/QStashClient'
 import { db } from '@/shared/infrastructure/PrismaClient'
@@ -28,11 +29,16 @@ EventBus.subscribe<RegistrationConfirmedEvent>('registration.confirmed', async (
   ])
   if (!workshop || !user?.email) return
 
-  const qrCodeDataUrl = await QRCode.toDataURL(event.qrCode, {
+  const qrBuffer = await QRCode.toBuffer(event.qrCode, {
     errorCorrectionLevel: 'H',
     margin: 0,
     width: 320,
   })
+  const { url: qrCodeUrl } = await put(
+    `qr/${event.registrationId}.png`,
+    qrBuffer,
+    { access: 'public' },
+  )
 
   const payload: NotificationPayload = {
     type: 'REGISTRATION_CONFIRMED',
@@ -42,7 +48,7 @@ EventBus.subscribe<RegistrationConfirmedEvent>('registration.confirmed', async (
       workshopTitle: workshop.title,
       workshopDate: fmtDate(workshop.date),
       workshopRoom: workshop.room,
-      qrCodeDataUrl,
+      qrCodeDataUrl: qrCodeUrl,
     },
   }
 

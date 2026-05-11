@@ -103,7 +103,7 @@ function PendingCard() {
 function SuccessCard({ qrDataUrl }: { qrDataUrl: string | null }) {
   return (
     <div className="w-full max-w-md border border-hairline p-8 text-center">
-      <p className="font-display text-[40px] uppercase leading-none text-[var(--emerald)]">
+      <p className="font-display text-[40px] uppercase leading-none text-(--emerald)">
         Thanh toán thành công
       </p>
       <p className="mt-2 text-[13px] text-ink/60">Vé của bạn đã được xác nhận</p>

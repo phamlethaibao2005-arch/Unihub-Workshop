@@ -47,8 +47,8 @@ Container.register<IPaymentGateway>(
     new VNPayGateway({
       tmnCode:    process.env.VNPAY_TMN_CODE!,
       hashSecret: process.env.VNPAY_HASH_SECRET!,
-      paymentUrl: process.env.VNPAY_URL ?? 'https://sandbox.vnpayment.vn/paymentv2/vpcpay.html',
-      queryUrl:   process.env.VNPAY_QUERY_URL ?? 'https://sandbox.vnpayment.vn/merchant_webapi/api/transaction',
+      paymentUrl: process.env.VNPAY_URL!,
+      queryUrl:   process.env.VNPAY_QUERY_URL!,
     }),
     redis,
   )
