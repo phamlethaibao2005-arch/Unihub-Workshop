@@ -3,9 +3,11 @@ import { notFound } from 'next/navigation'
 import { ChevronDown } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Footer } from '@/components/Footer'
+import { AISummaryTerminal } from '@/components/dashboard/AISummaryTerminal'
 import { LiveSeatBar } from '@/components/landing/LiveSeatBar'
 import { getSession } from '@/lib/session'
 import { RegisterCTA } from '@/components/registration/RegisterCTA'
+import { Role } from '@/modules/auth/domain/Role'
 import { AISummaryStatus } from '@/modules/workshop/domain/AISummaryStatus'
 import { WorkshopService } from '@/modules/workshop/application/WorkshopService'
 import type { IWorkshopRepository } from '@/modules/workshop/domain/IWorkshopRepository'
@@ -42,9 +44,11 @@ async function getPaymentStatus(): Promise<PaymentStatus> {
   }
 }
 
-async function getRegistrationInfo(workshopId: string): Promise<{ isRegistered: boolean }> {
+async function getViewerInfo(
+  workshopId: string
+): Promise<{ isRegistered: boolean; role: Role | null }> {
   const session = await getSession()
-  if (!session?.user.id) return { isRegistered: false }
+  if (!session?.user.id) return { isRegistered: false, role: session?.user.role ?? null }
 
   const registration = await db.registration.findUnique({
     where: { userId_workshopId: { userId: session.user.id, workshopId } },
@@ -52,7 +56,7 @@ async function getRegistrationInfo(workshopId: string): Promise<{ isRegistered: 
   })
 
   const isRegistered = registration?.status === 'CONFIRMED' || registration?.status === 'PENDING'
-  return { isRegistered }
+  return { isRegistered, role: session.user.role }
 }
 
 function renderMarkdown(source: string): ReactNode[] {
@@ -130,13 +134,14 @@ export default async function WorkshopDetailPage({
     notFound()
   }
 
-  const [{ isRegistered: registered }, paymentStatus] = await Promise.all([
-    getRegistrationInfo(workshop.id),
+  const [{ isRegistered: registered, role }, paymentStatus] = await Promise.all([
+    getViewerInfo(workshop.id),
     getPaymentStatus(),
   ])
   const price = formatPrice(workshop.price)
   const isFull = workshop.seatsLeft <= 0
   const paymentDegraded = paymentStatus === 'degraded'
+  const showAISummaryLogs = role === Role.ORGANIZER
 
   return (
     <main className="bg-canvas pb-24 text-ink">
@@ -208,6 +213,21 @@ export default async function WorkshopDetailPage({
                   <p className="text-[14px] text-ink/60">Chưa có tóm tắt AI.</p>
                 )}
               </div>
+
+              {showAISummaryLogs && (
+                <div className="mt-8">
+                  <AISummaryTerminal
+                    workshopId={workshop.id}
+                    status={workshop.aiSummaryStatus}
+                    failureReason={
+                      workshop.aiSummaryStatus === AISummaryStatus.FAILED
+                        ? workshop.aiSummary
+                        : null
+                    }
+                    readOnly
+                  />
+                </div>
+              )}
             </div>
 
             <div className="border-t border-hairline">

@@ -503,7 +503,7 @@ Read blueprint/specs/ai-summary.md.
 1. modules/workshop/infrastructure/AISummaryPipeline.ts — Pipe-and-Filter:
    - PDFDownloadFilter: fetch(pdfUrl) → Buffer.
    - PDFExtractFilter: pdf-parse buffer → text; throw PDFEmptyError if empty; clean whitespace; truncate 4000 tokens.
-   - GeminiSummarizeFilter: call @google/generative-ai gemini-2.5-flash with the system+user prompt from spec.
+   - GeminiSummarizeFilter: call @google/genai gemini-2.5-flash with the system+user prompt from spec.
    - Pipeline.run(pdfUrl) chains filters, returns summary string.
 
 2. modules/workshop/application/AISummaryService.ts — processPDF(workshopId, pdfUrl): try pipeline; on success update workshop aiSummary+status=COMPLETED; on error update status=FAILED.

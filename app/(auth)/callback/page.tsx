@@ -16,7 +16,7 @@ export default function AuthCallbackPage() {
     }
     const role = (session.user as { role?: string }).role
     if (role === 'CHECKIN_STAFF') router.replace('/scan')
-    else if (role === 'ORGANIZER') router.replace('/admin/dashboard')
+    else if (role === 'ORGANIZER') router.replace('/admin/workshops')
     else router.replace('/workshops')
   }, [session, isPending, router])
 

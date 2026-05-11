@@ -245,28 +245,28 @@ async function main() {
     },
   ];
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  // Build today's UTC midnight so the date filter in preload (which uses UTC) matches.
+  const todayUTC = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
 
   const todayIds: string[] = [];
   for (const w of todayWorkshops) {
     const id = stableId(`workshop:${w.title}`);
     todayIds.push(id);
-    const startTime = new Date(today);
-    startTime.setHours(w.startHour, 0, 0, 0);
-    const endTime = new Date(today);
-    endTime.setHours(w.endHour, 0, 0, 0);
+    const startTime = new Date(todayUTC);
+    startTime.setUTCHours(w.startHour, 0, 0, 0);
+    const endTime = new Date(todayUTC);
+    endTime.setUTCHours(w.endHour, 0, 0, 0);
     await db.workshop.upsert({
       where: { id },
       // Re-pin the date every seed run so it stays "today"
-      update: { date: today, startTime, endTime },
+      update: { date: todayUTC, startTime, endTime },
       create: {
         id,
         title: w.title,
         description: w.description,
         speaker: w.speaker,
         room: w.room,
-        date: today,
+        date: todayUTC,
         startTime,
         endTime,
         maxCapacity: w.maxCapacity,
