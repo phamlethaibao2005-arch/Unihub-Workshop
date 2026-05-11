@@ -3,7 +3,8 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { Bell, Search } from 'lucide-react'
+import { Search } from 'lucide-react'
+import { NotificationBell } from '@/components/NotificationBell'
 import { signOut, useSession } from '@/lib/auth-client'
 
 const NAV_LINKS = [
@@ -61,12 +62,7 @@ export function Nav() {
           <span>Tìm kiếm</span>
         </button>
 
-        <button
-          aria-label="Thông báo"
-          className="flex h-9 w-9 items-center justify-center rounded-full text-ink"
-        >
-          <Bell className="h-4 w-4" />
-        </button>
+        <NotificationBell />
 
         {session?.user ? (
           <div className="flex items-center gap-2">
