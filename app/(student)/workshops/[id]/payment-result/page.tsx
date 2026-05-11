@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { useQRDataUrl } from '@/lib/qr'
 
@@ -12,18 +12,28 @@ const POLL_TIMEOUT = 120_000
 
 export default function PaymentResultPage() {
   const searchParams = useSearchParams()
-  const router = useRouter()
   const txnRef = searchParams.get('txnRef')
 
-  const [status, setStatus] = useState<Status>('pending')
+  // Capture VNPAY return-URL params once on mount (URL never changes on this page)
+  const vnpParams = useMemo(() => {
+    const params: Record<string, string> = {}
+    searchParams.forEach((v, k) => { if (k.startsWith('vnp_')) params[k] = v })
+    return params
+  }, [searchParams])
+
+  // Derive initial status so we never call setState synchronously inside an effect
+  const [status, setStatus] = useState<Status>(!txnRef ? 'failed' : 'pending')
   const [qrCode, setQrCode] = useState<string | null>(null)
   const qrDataUrl = useQRDataUrl(qrCode)
 
-  const startedAt = useRef(Date.now())
+  // Initialized to 0; set to Date.now() inside the effect (not during render)
+  const startedAt = useRef(0)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
-    if (!txnRef) { setStatus('failed'); return }
+    if (!txnRef) return
+
+    startedAt.current = Date.now()
 
     const poll = async () => {
       if (Date.now() - startedAt.current > POLL_TIMEOUT) {
@@ -50,9 +60,23 @@ export default function PaymentResultPage() {
       }
     }
 
-    poll()
+    // Forward VNPAY return-URL params to the callback endpoint.
+    // On production the IPN already does this server-to-server, but on local dev
+    // VNPAY cannot reach localhost so the IPN never fires. Calling the callback
+    // here ensures the payment is processed in both environments.
+    // handleCallback is idempotent — if IPN already ran it returns RspCode "02".
+    if (Object.keys(vnpParams).length > 0) {
+      fetch('/api/payments/vnpay-callback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(vnpParams),
+      }).finally(() => poll())
+    } else {
+      poll()
+    }
+
     return () => { if (timerRef.current) clearTimeout(timerRef.current) }
-  }, [txnRef])
+  }, [txnRef, vnpParams])
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-canvas px-4">

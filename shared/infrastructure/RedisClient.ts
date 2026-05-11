@@ -26,6 +26,18 @@ const localRedis = {
     });
     return count;
   },
+  async incr(key: string): Promise<number> {
+    const cur = (memoryStore.get(key) as number | undefined) ?? 0;
+    const next = cur + 1;
+    memoryStore.set(key, next);
+    return next;
+  },
+  async decr(key: string): Promise<number> {
+    const cur = (memoryStore.get(key) as number | undefined) ?? 0;
+    const next = cur - 1;
+    memoryStore.set(key, next);
+    return next;
+  },
 } as Redis;
 
 export const redis: Redis =
