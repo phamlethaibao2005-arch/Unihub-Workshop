@@ -10,7 +10,6 @@ export const qstash: Client =
   globalThis.__qstash ??
   new Client({
     token: process.env.QSTASH_TOKEN!,
-    baseUrl: process.env.QSTASH_URL,
   });
 
 if (process.env.NODE_ENV !== "production") {
