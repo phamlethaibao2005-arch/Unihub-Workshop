@@ -11,6 +11,7 @@ function fmt(d: Date) {
 
 export default async function MyRegistrationsPage() {
   const session = await getSession()
+  console.log('Session in MyRegistrationsPage:', session) // Debug log
   if (!session?.user) redirect('/login')
 
   const year = new Date().getFullYear()
