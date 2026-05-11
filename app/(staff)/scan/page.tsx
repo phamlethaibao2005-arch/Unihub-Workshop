@@ -196,8 +196,7 @@ export default function ScanPage() {
           toast.success('✓ Checked in!')
         } else {
           const body = (await res.json()) as { error?: string; code?: string }
-          if (body.code === 'CONFLICT') toast.error('Already checked in')
-          else if (body.code === 'NOT_FOUND') toast.error('Registration not found')
+          if (body.code === 'NOT_FOUND') toast.error('Registration not found')
           else toast.error(body.error ?? 'Check-in failed')
         }
       } else {

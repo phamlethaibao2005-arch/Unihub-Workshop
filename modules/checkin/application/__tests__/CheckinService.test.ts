@@ -126,7 +126,7 @@ describe('CheckinService.checkIn', () => {
     const service = new CheckinService(checkinRepo, registrationRepo, workshopRepo)
 
     await expect(service.checkIn(STAFF_ID, 'reg-1', WORKSHOP_ID)).rejects.toThrow(
-      'ALREADY_CHECKED_IN',
+      'Already checked in',
     )
   })
 

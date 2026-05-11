@@ -55,11 +55,12 @@ export class CheckinService {
     const registration = await this.registrationRepo.findById(registrationId)
     if (!registration) throw new NotFoundError('Registration not found')
 
-    const existing = await this.checkinRepo.findByRegistrationId(registrationId)
-    if (existing) throw new ConflictError('ALREADY_CHECKED_IN')
-
+    // Validate QR + workshop first so wrong-workshop errors surface before duplicate check
     const command = new ScanQRCommand(registration.qrCode!, staffId, workshopId, deviceId)
     const checkin = command.execute(registration, qrHmacSecret())
+
+    const existing = await this.checkinRepo.findByRegistrationId(registrationId)
+    if (existing) throw new ConflictError('Already checked in')
 
     const saved = await this.checkinRepo.create(checkin)
     return { registrationId: saved.registrationId, checkedInAt: saved.checkedInAt }

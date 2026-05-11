@@ -1,7 +1,7 @@
 import "dotenv/config";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@prisma/client";
-import { createHash } from "crypto";
+import { createHash, createHmac } from "crypto";
 import { hashPassword } from "@better-auth/utils/password";
 
 const db = new PrismaClient({
@@ -17,6 +17,15 @@ function makeEmail(name: string) {
 // Derive a stable cuid-like id from a string so re-runs are idempotent
 function stableId(seed: string) {
   return "c" + createHash("md5").update(seed).digest("hex").slice(0, 24);
+}
+
+function generateQR(registrationId: string): { qrCode: string; qrSignature: string } {
+  const secret = process.env.QR_HMAC_SECRET!;
+  // Use a fixed timestamp so the seed is idempotent
+  const ts = 1000000000000;
+  const qrCode = `UNIHUB-${registrationId}-${ts}`;
+  const qrSignature = createHmac("sha256", secret).update(qrCode).digest("hex");
+  return { qrCode, qrSignature };
 }
 
 async function main() {
@@ -203,6 +212,113 @@ async function main() {
   }
 
   console.log(`✅  Created ${workshops.length} workshops (3 free, 3 paid)`);
+
+  // ─── Today's workshops for check-in testing ─────────────────────────────────
+  // Use update:{} so dates stay pinned to "today" on each re-run.
+  const todayWorkshops = [
+    {
+      title: "Thiết Kế Giao Diện với Figma",
+      description: "Từ wireframe đến prototype — kỹ năng Figma thực chiến cho developer và designer.",
+      speaker: "Trương Ngọc Hân",
+      room: "Room B101 / Design Studio",
+      startHour: 8, endHour: 10,
+      maxCapacity: 40,
+      price: 0,
+    },
+    {
+      title: "DevOps & CI/CD Thực Hành",
+      description: "Dựng pipeline GitHub Actions, Docker, và deploy lên VPS trong 2.5 giờ thực hành.",
+      speaker: "Ngô Quốc Hùng",
+      room: "Room C201 / Server Lab",
+      startHour: 13, endHour: 16,
+      maxCapacity: 35,
+      price: 0,
+    },
+    {
+      title: "API Design & OpenAPI 3.0",
+      description: "Thiết kế RESTful API chuẩn — contract-first với OpenAPI, Zod, và type-safe clients.",
+      speaker: "Đinh Thị Mai",
+      room: "Room D301 / Tech Hub",
+      startHour: 16, endHour: 18,
+      maxCapacity: 30,
+      price: 0,
+    },
+  ];
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const todayIds: string[] = [];
+  for (const w of todayWorkshops) {
+    const id = stableId(`workshop:${w.title}`);
+    todayIds.push(id);
+    const startTime = new Date(today);
+    startTime.setHours(w.startHour, 0, 0, 0);
+    const endTime = new Date(today);
+    endTime.setHours(w.endHour, 0, 0, 0);
+    await db.workshop.upsert({
+      where: { id },
+      // Re-pin the date every seed run so it stays "today"
+      update: { date: today, startTime, endTime },
+      create: {
+        id,
+        title: w.title,
+        description: w.description,
+        speaker: w.speaker,
+        room: w.room,
+        date: today,
+        startTime,
+        endTime,
+        maxCapacity: w.maxCapacity,
+        price: w.price,
+        status: "ACTIVE",
+        createdBy: organizer.id,
+      },
+    });
+  }
+
+  console.log(`✅  Created/updated ${todayWorkshops.length} today's workshops`);
+
+  // ─── Seed registrations with QR codes ───────────────────────────────────────
+  // Give every student a CONFIRMED registration (with QR) for each today's workshop
+  // so staff can scan them immediately after seeding.
+  const students = await db.user.findMany({ where: { role: "STUDENT" } });
+
+  let regCount = 0;
+  for (const workshopId of todayIds) {
+    let registered = 0;
+    for (const student of students) {
+      const regId = stableId(`reg:${student.id}:${workshopId}`);
+      const { qrCode, qrSignature } = generateQR(regId);
+
+      const existing = await db.registration.findFirst({
+        where: { userId: student.id, workshopId },
+      });
+      if (!existing) {
+        await db.registration.create({
+          data: {
+            id: regId,
+            userId: student.id,
+            workshopId,
+            status: "CONFIRMED",
+            qrCode,
+            qrSignature,
+          },
+        });
+        registered++;
+        regCount++;
+      }
+    }
+    // Keep currentRegistrations in sync
+    if (registered > 0) {
+      await db.workshop.update({
+        where: { id: workshopId },
+        data: { currentRegistrations: { increment: registered } },
+      });
+    }
+  }
+
+  console.log(`✅  Created ${regCount} student registrations with QR codes`);
   console.log("🎉  Seed complete.");
 }
 
