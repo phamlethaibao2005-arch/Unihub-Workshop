@@ -9,7 +9,7 @@ import type { WorkshopCancelledEvent } from '@/modules/workshop/domain/events/Wo
 import type { WorkshopUpdatedEvent } from '@/modules/workshop/domain/events/WorkshopUpdatedEvent'
 import type { NotificationPayload } from '@/modules/notification/domain/NotificationPayload'
 
-const BASE_URL = process.env.BETTER_AUTH_URL ?? 'http://localhost:3000'
+const BASE_URL = process.env.BETTER_AUTH_URL!
 const DEST = `${BASE_URL}/api/queue/notifications`
 
 function fmtDate(d: Date): string {
