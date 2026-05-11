@@ -70,7 +70,7 @@ export function Nav() {
 
         {session?.user ? (
           <div className="flex items-center gap-2">
-            <Link href="/my-registrations" className="flex items-center gap-2">
+            <Link href="/profile" className="flex items-center gap-2">
               <span className="hidden text-[13px] font-semibold text-ink sm:block">
                 {session.user.name?.split(' ').pop() ?? 'Bạn'}
               </span>

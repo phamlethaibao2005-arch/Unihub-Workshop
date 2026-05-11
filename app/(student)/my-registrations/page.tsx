@@ -1,9 +1,9 @@
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 import { getSession } from '@/lib/session'
 import { db } from '@/shared/infrastructure/PrismaClient'
 import { RegistrationListClient } from '@/components/registration/RegistrationListClient'
 import type { RegistrationDTO } from '@/shared/types/registration'
-
 
 function fmt(d: Date) {
   return d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false })
@@ -11,7 +11,6 @@ function fmt(d: Date) {
 
 export default async function MyRegistrationsPage() {
   const session = await getSession()
-  console.log('Session in MyRegistrationsPage:', session) // Debug log
   if (!session?.user) redirect('/login')
 
   const year = new Date().getFullYear()
@@ -47,14 +46,22 @@ export default async function MyRegistrationsPage() {
   const past = registrations.filter((r) => new Date(r.workshop.date) < today)
 
   return (
-    <main className="px-4 md:px-6 lg:px-10 py-[48px] max-w-2xl">
+    <main className="px-4 md:px-6 lg:px-10 py-12 max-w-2xl">
+      {/* Back */}
+      <Link
+        href="/workshops"
+        className="inline-flex items-center gap-1.5 text-[12px] uppercase tracking-widest text-ink/40 hover:text-ink transition-colors mb-8"
+      >
+        ← Khám phá workshops
+      </Link>
+
       {/* Eyebrow */}
       <p className="text-[11px] font-medium uppercase tracking-[0.15em] text-[#9e9ea0]">
         MY DROPS / Cohort {year}
       </p>
 
       {/* Headline */}
-      <h1 className="font-display text-[64px] text-ink uppercase leading-none mt-1 mb-2">
+      <h1 className="font-display text-[48px] md:text-[64px] text-ink uppercase leading-none mt-1 mb-2">
         Vé Của Bạn
       </h1>
 
