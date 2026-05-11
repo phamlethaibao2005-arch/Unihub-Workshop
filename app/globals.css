@@ -320,3 +320,24 @@ body {
   outline: 2px solid #111111;
   outline-offset: 2px;
 }
+
+/* ─── Form inputs ─── */
+.input-field {
+  width: 100%;
+  border: 1px solid #cacacb;
+  background: #ffffff;
+  color: #111111;
+  padding: 10px 14px;
+  font-size: 14px;
+  border-radius: 0;
+  transition: border-color 0.15s ease;
+}
+
+.input-field:focus {
+  outline: none;
+  border-color: #111111;
+}
+
+.input-field::placeholder {
+  color: #cacacb;
+}

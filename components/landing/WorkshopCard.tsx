@@ -16,7 +16,7 @@ export function WorkshopCard({ workshop }: { workshop: WorkshopDTO }) {
 
   return (
     <Link href={`/workshops/${workshop.id}`} className="block rounded-none bg-canvas shadow-none">
-      <div className="relative aspect-[4/5] w-full overflow-hidden bg-cloud">
+      <div className="relative aspect-4/5 w-full overflow-hidden bg-cloud">
         <Image
           src={workshop.cover}
           alt={workshop.title}
