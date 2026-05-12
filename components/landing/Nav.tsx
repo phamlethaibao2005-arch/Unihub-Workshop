@@ -176,7 +176,7 @@ export function Nav() {
             <div ref={profileRef} className="relative">
               <button
                 onClick={() => setProfileOpen((v) => !v)}
-                className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-ink text-[12px] font-semibold text-canvas ring-2 ring-transparent transition hover:opacity-85 focus-visible:ring-ink/30 overflow-hidden"
+                className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-ink text-[12px] font-semibold cursor-pointer text-canvas ring-2 ring-transparent transition hover:opacity-85 focus-visible:ring-ink/30 overflow-hidden"
                 aria-label="Tài khoản"
               >
                 {session.user.image ? (
