@@ -64,7 +64,6 @@ describe('ScanQRCommand.execute', () => {
   })
 
   it('throws ValidationError when registration is not CONFIRMED', () => {
-    const reg = makeConfirmedRegistration({ status: RegistrationStatus.PENDING })
     // Manually set qrCode so payload matches (PENDING regs normally have no QR,
     // but we test the status check specifically)
     const validReg = makeConfirmedRegistration()

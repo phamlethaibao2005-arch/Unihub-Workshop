@@ -88,7 +88,10 @@ export function AISummaryTerminal({
   }, [appendLog, currentFailure, currentStatus])
 
   useEffect(() => {
-    appendStatusLogs()
+    const id = window.setTimeout(() => {
+      appendStatusLogs()
+    }, 0)
+    return () => window.clearTimeout(id)
   }, [appendStatusLogs])
 
   useEffect(() => {

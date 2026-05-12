@@ -46,9 +46,15 @@ export default function ScanPage() {
   // Refs that mirror the latest state — used inside stable callbacks to avoid
   // stale closures while keeping the dependency array for useEffect empty.
   const onlineRef = useRef(online)
-  onlineRef.current = online
   const workshopIdRef = useRef(selectedWorkshopId)
-  workshopIdRef.current = selectedWorkshopId
+
+  useEffect(() => {
+    onlineRef.current = online
+  }, [online])
+
+  useEffect(() => {
+    workshopIdRef.current = selectedWorkshopId
+  }, [selectedWorkshopId])
 
   // Async-guard refs so syncPending / handleDecode are never re-entered
   const isSyncingRef = useRef(false)
@@ -106,8 +112,10 @@ export default function ScanPage() {
   // ── mount: load IDB data + wire up listeners ─────────────────────────────────
 
   useEffect(() => {
-    refreshCounts()
-    if (navigator.onLine) syncPending()
+    const initial = setTimeout(() => {
+      void refreshCounts()
+      if (navigator.onLine) void syncPending()
+    }, 0)
 
     const handleOnline = () => {
       setOnline(true)
@@ -124,6 +132,7 @@ export default function ScanPage() {
     navigator.serviceWorker?.addEventListener('message', handleSWMessage)
 
     return () => {
+      clearTimeout(initial)
       window.removeEventListener('online', handleOnline)
       window.removeEventListener('offline', handleOffline)
       navigator.serviceWorker?.removeEventListener('message', handleSWMessage)

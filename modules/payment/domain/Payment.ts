@@ -50,7 +50,7 @@ export class Payment extends Entity<string> {
     this._paidAt = new Date()
   }
 
-  markFailed(_reason?: string): void {
+  markFailed(): void {
     if (this._status === PaymentStatus.SUCCESS) {
       throw new ConflictError('Cannot fail a payment that has already succeeded')
     }

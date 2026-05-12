@@ -83,9 +83,13 @@ export function NotificationBell() {
   }
 
   useEffect(() => {
-    void fetchCount()
-    pollRef.current = setInterval(() => void fetchCount(), 30_000)
-    return () => { if (pollRef.current) clearInterval(pollRef.current) }
+    const tick = () => void fetchCount()
+    const initial = setTimeout(tick, 0)
+    pollRef.current = setInterval(tick, 30_000)
+    return () => {
+      clearTimeout(initial)
+      if (pollRef.current) clearInterval(pollRef.current)
+    }
   }, [])
 
   // ── Close on outside click / Escape ──────────────────────────────

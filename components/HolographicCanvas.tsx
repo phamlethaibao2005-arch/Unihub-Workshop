@@ -24,11 +24,15 @@ function HolographicCore({ pointer }: HolographicCoreProps) {
   const particlesRef = useRef<THREE.Points>(null)
 
   const particlePositions = useMemo<Float32Array>(() => {
+    const rand = (seed: number) => {
+      const x = Math.sin(seed) * 10000
+      return x - Math.floor(x)
+    }
     const arr = new Float32Array(800 * 3)
     for (let i = 0; i < 800; i++) {
-      const r = 1.8 + Math.random() * 1.6
-      const theta = Math.random() * Math.PI * 2
-      const phi = Math.acos(2 * Math.random() - 1)
+      const r = 1.8 + rand(i * 1.13) * 1.6
+      const theta = rand(i * 2.17) * Math.PI * 2
+      const phi = Math.acos(2 * rand(i * 3.19) - 1)
       arr[i * 3] = r * Math.sin(phi) * Math.cos(theta)
       arr[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta)
       arr[i * 3 + 2] = r * Math.cos(phi)

@@ -91,7 +91,7 @@ export class PDFExtractFilter {
     try {
       const parsed = await pdfParse(buffer)
       rawText = parsed.text ?? ''
-    } catch (err) {
+    } catch {
       throw new PDFExtractError('PDF parse failed')
     }
 

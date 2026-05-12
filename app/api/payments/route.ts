@@ -15,7 +15,7 @@ import { IdempotencyService } from '@/modules/payment/application/IdempotencySer
 import type { IPaymentGateway } from '@/modules/payment/domain/IPaymentGateway'
 import type { ISeatStore } from '@/modules/registration/domain/SeatManager'
 
-function getService(ipAddress: string): PaymentService {
+function getService(): PaymentService {
   return new PaymentService(
     Container.resolve<IPaymentGateway>('paymentGateway'),
     new PrismaPaymentRepository(db),
@@ -29,7 +29,7 @@ function getService(ipAddress: string): PaymentService {
 
 export async function POST(req: Request) {
   try {
-    const session = await requireAuth()
+    await requireAuth()
     const body = await req.json() as { registrationId?: string }
     if (!body.registrationId) {
       return NextResponse.json({ error: 'registrationId required' }, { status: 400 })
@@ -44,7 +44,7 @@ export async function POST(req: Request) {
     }
 
     const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? '127.0.0.1'
-    const svc = getService(ip)
+    const svc = getService()
     const result = await svc.initiatePayment(
       body.registrationId,
       payment.amount,

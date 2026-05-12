@@ -54,7 +54,7 @@ export class VNPayGateway implements IPaymentGateway {
   }
 
   verifyCallback(params: Record<string, string>): boolean {
-    const { vnp_SecureHash, vnp_SecureHashType: _type, ...rest } = params
+    const { vnp_SecureHash, ...rest } = params
     if (!vnp_SecureHash) return false
 
     const sp = new URLSearchParams(rest)

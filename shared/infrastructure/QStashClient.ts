@@ -2,7 +2,6 @@ import { Client, Receiver } from "@upstash/qstash";
 import type { NextRequest } from "next/server";
 
 declare global {
-  // eslint-disable-next-line no-var
   var __qstash: Client | undefined;
 }
 

@@ -11,7 +11,7 @@
  */
 import assert from 'assert'
 import { SeatManager, type ISeatStore } from '../modules/registration/domain/SeatManager'
-import { RegistrationService, type RegisterResult } from '../modules/registration/application/RegistrationService'
+import { RegistrationService } from '../modules/registration/application/RegistrationService'
 import { Registration, type RegistrationProps } from '../modules/registration/domain/Registration'
 import { RegistrationStatus } from '../modules/registration/domain/RegistrationStatus'
 import { Workshop } from '../modules/workshop/domain/Workshop'
@@ -72,7 +72,8 @@ function makeWorkshopRepo(workshopId: string, maxCapacity: number): IWorkshopRep
   return {
     async findById() { return make() },
     async findActiveByDate() { return [] },
-    async listPaginated(_: { filters?: WorkshopFilters; page: number; size: number }): Promise<PaginatedResult<Workshop>> {
+    async listPaginated(params: { filters?: WorkshopFilters; page: number; size: number }): Promise<PaginatedResult<Workshop>> {
+      void params
       return { items: [make()], total: 1, page: 1, size: 20 }
     },
     // OL not enforced in mock — SeatManager is the real gate being tested.
@@ -125,7 +126,7 @@ class MockIdempotencyService implements IIdempotencyService {
 
 function makeMockPrisma(registrationRepo: IRegistrationRepository): PrismaClient {
   const txProxy = {
-    async $executeRaw(..._args: unknown[]) { return 1 },
+    async $executeRaw(...args: unknown[]) { void args; return 1 },
     registration: {
       async create({ data }: { data: RegistrationProps & { status: string; qrCode?: string | null; qrSignature?: string | null } }) {
         const reg = new Registration({
@@ -159,7 +160,7 @@ function makeMockPrisma(registrationRepo: IRegistrationRepository): PrismaClient
 // ── Null EventBus ────────────────────────────────────────────────────────────
 
 const nullEventBus: IEventBus = {
-  async publish(_event: DomainEvent) {},
+  async publish(event: DomainEvent) { void event },
 }
 
 // ── Test ─────────────────────────────────────────────────────────────────────
@@ -188,12 +189,15 @@ async function run() {
   )
 
   // Fire 100 concurrent register() calls, each with a unique userId + idempotencyKey
-  const calls = Array.from({ length: CALLERS }, (_, i) =>
-    service.register(`user-${i}`, WORKSHOP_ID, `key-${i}`).then(
-      (r) => ({ ok: true, result: r }),
-      (e) => ({ ok: false, error: e as Error }),
-    ),
-  )
+  const calls = [] as Array<Promise<{ ok: true; result: unknown } | { ok: false; error: Error }>>
+  for (let i = 0; i < CALLERS; i += 1) {
+    calls.push(
+      service.register(`user-${i}`, WORKSHOP_ID, `key-${i}`).then(
+        (r) => ({ ok: true, result: r }),
+        (e) => ({ ok: false, error: e as Error }),
+      ),
+    )
+  }
 
   const results = await Promise.all(calls)
   const successes = results.filter((r) => r.ok)

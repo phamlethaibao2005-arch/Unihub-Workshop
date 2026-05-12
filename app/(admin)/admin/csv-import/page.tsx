@@ -62,15 +62,12 @@ function ErrorDetailsCard({
 }) {
   const [page, setPage] = useState(0);
   const allErrors = useMemo(() => buildErrors(logs), [logs]);
-  const totalPages = Math.ceil(allErrors.length / PAGE_SIZE);
-  const pageErrors = allErrors.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
-
-  // Reset to page 0 when the error list shrinks below current page
-  useEffect(() => {
-    if (page > 0 && page >= Math.ceil(allErrors.length / PAGE_SIZE)) {
-      setPage(Math.max(0, Math.ceil(allErrors.length / PAGE_SIZE) - 1));
-    }
-  }, [allErrors.length, page]);
+  const totalPages = Math.max(1, Math.ceil(allErrors.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages - 1);
+  const pageErrors = allErrors.slice(
+    safePage * PAGE_SIZE,
+    (safePage + 1) * PAGE_SIZE
+  );
 
   if (allErrors.length === 0) return null;
 
@@ -132,19 +129,19 @@ function ErrorDetailsCard({
         {totalPages > 1 && (
           <div className="mt-4 flex items-center justify-between border-t border-red-200 pt-4">
             <button
-              onClick={() => setPage((p) => Math.max(0, p - 1))}
-              disabled={page === 0}
+              onClick={() => setPage((p) => Math.max(0, Math.min(p, safePage) - 1))}
+              disabled={safePage === 0}
               className="flex items-center gap-1 rounded px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-40"
             >
               <ChevronLeft className="h-3.5 w-3.5" />
               Trước
             </button>
             <span className="font-mono text-xs text-red-700">
-              {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, allErrors.length)} / {allErrors.length}
+              {safePage * PAGE_SIZE + 1}–{Math.min((safePage + 1) * PAGE_SIZE, allErrors.length)} / {allErrors.length}
             </span>
             <button
-              onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-              disabled={page === totalPages - 1}
+              onClick={() => setPage((p) => Math.min(totalPages - 1, Math.max(p, safePage) + 1))}
+              disabled={safePage === totalPages - 1}
               className="flex items-center gap-1 rounded px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-40"
             >
               Sau
@@ -267,9 +264,13 @@ export default function CSVImportPage() {
   }, []);
 
   useEffect(() => {
-    void fetchLogs();
-    const id = setInterval(() => void fetchLogs(), 5_000);
-    return () => clearInterval(id);
+    const tick = () => void fetchLogs();
+    const initial = setTimeout(tick, 0);
+    const id = setInterval(tick, 5_000);
+    return () => {
+      clearTimeout(initial);
+      clearInterval(id);
+    };
   }, [fetchLogs]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
