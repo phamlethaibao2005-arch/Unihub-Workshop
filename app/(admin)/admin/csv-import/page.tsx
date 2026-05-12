@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { Upload, FileText, AlertCircle, Loader } from 'lucide-react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { Upload, FileText, AlertCircle, Loader, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
@@ -22,16 +22,36 @@ interface CsvImportLog {
   processedAt: string;
 }
 
+const PAGE_SIZE = 20
+
 export default function CSVImportPage() {
   const [logs, setLogs] = useState<CsvImportLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [errorPage, setErrorPage] = useState(0);
+
+  const allErrors = useMemo(
+    () =>
+      logs.flatMap((log) =>
+        (log.errorDetails ?? []).map((error, idx) => ({
+          ...error,
+          filename: log.filename,
+          logId: log.id,
+          localIdx: idx,
+        }))
+      ),
+    [logs]
+  );
+
+  const totalErrorPages = Math.ceil(allErrors.length / PAGE_SIZE);
+  const pageErrors = allErrors.slice(errorPage * PAGE_SIZE, (errorPage + 1) * PAGE_SIZE);
 
   const fetchLogs = useCallback(async () => {
     try {
       const response = await fetch('/api/admin/csv-import');
       const data = await response.json();
       setLogs(data.logs || []);
+      setErrorPage(0);
     } catch (error) {
       console.error('Error fetching logs:', error);
     } finally {
@@ -205,35 +225,60 @@ export default function CSVImportPage() {
       </Card>
 
       {/* Error Details */}
-      {logs.some((log) => log.errorDetails && log.errorDetails.length > 0) && (
+      {allErrors.length > 0 && (
         <Card className="rounded-none border border-red-200 bg-red-50">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-red-900">
               <AlertCircle className="h-5 w-5" />
               Chi Tiết Lỗi
+              <span className="ml-auto font-mono text-sm font-normal text-red-700">
+                {allErrors.length} lỗi
+              </span>
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {logs.map((log) =>
-                log.errorDetails?.map((error, idx) => (
-                  <div
-                    key={`${log.id}-${idx}`}
-                    className="rounded bg-white p-3 font-mono text-xs"
-                  >
-                    <div className="font-semibold text-red-600">
-                      {log.filename} - Hàng {error.row}
-                    </div>
-                    <div className="mt-1 text-gray-700">{error.error}</div>
-                    {error.data && (
-                      <div className="mt-1 text-gray-500">
-                        {JSON.stringify(error.data, null, 2)}
-                      </div>
-                    )}
+              {pageErrors.map((error) => (
+                <div
+                  key={`${error.logId}-${error.localIdx}`}
+                  className="rounded bg-white p-3 font-mono text-xs"
+                >
+                  <div className="font-semibold text-red-600">
+                    {error.filename} — Hàng {error.row}
                   </div>
-                ))
-              )}
+                  <div className="mt-1 text-gray-700">{error.error}</div>
+                  {error.data && (
+                    <div className="mt-1 whitespace-pre-wrap text-gray-500">
+                      {JSON.stringify(error.data, null, 2)}
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
+
+            {totalErrorPages > 1 && (
+              <div className="mt-4 flex items-center justify-between border-t border-red-200 pt-4">
+                <button
+                  onClick={() => setErrorPage((p) => Math.max(0, p - 1))}
+                  disabled={errorPage === 0}
+                  className="flex items-center gap-1 rounded px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                  Trước
+                </button>
+                <span className="font-mono text-xs text-red-700">
+                  {errorPage * PAGE_SIZE + 1}–{Math.min((errorPage + 1) * PAGE_SIZE, allErrors.length)} / {allErrors.length}
+                </span>
+                <button
+                  onClick={() => setErrorPage((p) => Math.min(totalErrorPages - 1, p + 1))}
+                  disabled={errorPage === totalErrorPages - 1}
+                  className="flex items-center gap-1 rounded px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Sau
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
