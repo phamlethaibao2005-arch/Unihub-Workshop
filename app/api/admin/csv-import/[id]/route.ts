@@ -5,9 +5,21 @@ import { Role } from '@/modules/auth/domain/Role';
 import { requireRole } from '@/lib/session';
 import { toResponse } from '@/shared/errors/handle';
 
-const patchSchema = z.object({
-  archived: z.boolean(),
+const errorDetailSchema = z.object({
+  row: z.number(),
+  error: z.string(),
+  data: z.record(z.string(), z.string()).optional(),
 });
+
+const patchSchema = z
+  .object({
+    archived: z.boolean().optional(),
+    errorDetails: z.array(errorDetailSchema).nullable().optional(),
+  })
+  .refine(
+    (d) => d.archived !== undefined || d.errorDetails !== undefined,
+    'At least one field is required'
+  );
 
 export async function PATCH(
   request: NextRequest,
@@ -24,10 +36,11 @@ export async function PATCH(
       return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
     }
 
-    const log = await db.csvImportLog.update({
-      where: { id },
-      data: { archived: body.archived },
-    });
+    const data: Record<string, unknown> = {};
+    if (body.archived !== undefined) data.archived = body.archived;
+    if (body.errorDetails !== undefined) data.errorDetails = body.errorDetails;
+
+    const log = await db.csvImportLog.update({ where: { id }, data });
 
     return NextResponse.json({ log });
   } catch (error) {

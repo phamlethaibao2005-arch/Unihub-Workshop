@@ -3,12 +3,18 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Upload, FileText, AlertCircle, Loader,
-  ChevronLeft, ChevronRight, Archive, ArchiveRestore, Trash2,
+  ChevronLeft, ChevronRight, Archive, ArchiveRestore, Trash2, X,
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
+
+interface ErrorDetail {
+  row: number;
+  error: string;
+  data?: Record<string, string>;
+}
 
 interface CsvImportLog {
   id: string;
@@ -17,11 +23,7 @@ interface CsvImportLog {
   successCount: number;
   errorCount: number;
   duplicateCount: number;
-  errorDetails: Array<{
-    row: number;
-    error: string;
-    data?: Record<string, string>;
-  }> | null;
+  errorDetails: ErrorDetail[] | null;
   status: string;
   archived: boolean;
   processedAt: string;
@@ -49,15 +51,37 @@ function StatusBadge({ status }: { status: string }) {
   }
 }
 
-function ErrorDetailsCard({ logs }: { logs: CsvImportLog[] }) {
+function ErrorDetailsCard({
+  logs,
+  onDeleteError,
+  onClearErrors,
+}: {
+  logs: CsvImportLog[];
+  onDeleteError: (logId: string, localIdx: number) => Promise<void>;
+  onClearErrors: (logIds: string[]) => Promise<void>;
+}) {
   const [page, setPage] = useState(0);
   const allErrors = useMemo(() => buildErrors(logs), [logs]);
   const totalPages = Math.ceil(allErrors.length / PAGE_SIZE);
   const pageErrors = allErrors.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
-  useEffect(() => { setPage(0); }, [logs]);
+  // Reset to page 0 when the error list shrinks below current page
+  useEffect(() => {
+    if (page > 0 && page >= Math.ceil(allErrors.length / PAGE_SIZE)) {
+      setPage(Math.max(0, Math.ceil(allErrors.length / PAGE_SIZE) - 1));
+    }
+  }, [allErrors.length, page]);
 
   if (allErrors.length === 0) return null;
+
+  const logsWithErrors = logs
+    .filter((l) => l.errorDetails && l.errorDetails.length > 0)
+    .map((l) => l.id);
+
+  const handleClearAll = () => {
+    if (!window.confirm(`Xóa tất cả ${allErrors.length} lỗi? Thao tác này không thể hoàn tác.`)) return;
+    void onClearErrors(logsWithErrors);
+  };
 
   return (
     <Card className="rounded-none border border-red-200 bg-red-50">
@@ -65,19 +89,34 @@ function ErrorDetailsCard({ logs }: { logs: CsvImportLog[] }) {
         <CardTitle className="flex items-center gap-2 text-red-900">
           <AlertCircle className="h-5 w-5" />
           Chi Tiết Lỗi
-          <span className="ml-auto font-mono text-sm font-normal text-red-700">
-            {allErrors.length} lỗi
+          <span className="font-mono text-sm font-normal text-red-700">
+            ({allErrors.length})
           </span>
+          <button
+            onClick={handleClearAll}
+            className="ml-auto rounded px-2.5 py-1 text-[11px] font-medium uppercase tracking-wide text-red-600 hover:bg-red-100"
+          >
+            Xóa tất cả
+          </button>
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="space-y-3">
+        <div className="space-y-2">
           {pageErrors.map((error) => (
             <div
               key={`${error.logId}-${error.localIdx}`}
-              className="rounded bg-white p-3 font-mono text-xs"
+              className="group relative rounded bg-white p-3 font-mono text-xs"
             >
-              <div className="font-semibold text-red-600">
+              {/* Delete single error */}
+              <button
+                onClick={() => void onDeleteError(error.logId, error.localIdx)}
+                title="Xóa lỗi này"
+                className="absolute right-2 top-2 rounded p-0.5 text-gray-300 opacity-0 transition-opacity hover:bg-red-50 hover:text-red-500 group-hover:opacity-100"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+
+              <div className="font-semibold text-red-600 pr-6">
                 {error.filename} — Hàng {error.row}
               </div>
               <div className="mt-1 text-gray-700">{error.error}</div>
@@ -240,7 +279,6 @@ export default function CSVImportPage() {
       toast.error('Vui lòng chọn tệp CSV');
       return;
     }
-
     setUploading(true);
     try {
       const formData = new FormData();
@@ -257,26 +295,28 @@ export default function CSVImportPage() {
     }
   };
 
+  const patchLog = async (id: string, payload: Record<string, unknown>) => {
+    const res = await fetch(`/api/admin/csv-import/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error();
+  };
+
   const handleArchive = async (id: string, archived: boolean) => {
-    // Optimistic update
     setLogs((prev) => prev.map((l) => (l.id === id ? { ...l, archived } : l)));
     try {
-      const res = await fetch(`/api/admin/csv-import/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ archived }),
-      });
-      if (!res.ok) throw new Error();
+      await patchLog(id, { archived });
       toast.success(archived ? 'Đã lưu trữ' : 'Đã khôi phục');
     } catch {
       toast.error('Có lỗi xảy ra, thử lại');
-      void fetchLogs(); // revert to server state
+      void fetchLogs();
     }
   };
 
   const handleDelete = async (id: string, filename: string) => {
     if (!window.confirm(`Xóa vĩnh viễn bản ghi "${filename}"? Thao tác này không thể hoàn tác.`)) return;
-    // Optimistic update
     setLogs((prev) => prev.filter((l) => l.id !== id));
     try {
       const res = await fetch(`/api/admin/csv-import/${id}`, { method: 'DELETE' });
@@ -284,7 +324,38 @@ export default function CSVImportPage() {
       toast.success('Đã xóa');
     } catch {
       toast.error('Có lỗi xảy ra, thử lại');
-      void fetchLogs(); // revert to server state
+      void fetchLogs();
+    }
+  };
+
+  const handleDeleteError = async (logId: string, localIdx: number) => {
+    const log = logs.find((l) => l.id === logId);
+    if (!log?.errorDetails) return;
+
+    const newDetails = log.errorDetails.filter((_, i) => i !== localIdx);
+    const next = newDetails.length > 0 ? newDetails : null;
+
+    setLogs((prev) =>
+      prev.map((l) => (l.id === logId ? { ...l, errorDetails: next } : l))
+    );
+    try {
+      await patchLog(logId, { errorDetails: next });
+    } catch {
+      toast.error('Có lỗi xảy ra, thử lại');
+      void fetchLogs();
+    }
+  };
+
+  const handleClearErrors = async (logIds: string[]) => {
+    setLogs((prev) =>
+      prev.map((l) => (logIds.includes(l.id) ? { ...l, errorDetails: null } : l))
+    );
+    try {
+      await Promise.all(logIds.map((id) => patchLog(id, { errorDetails: null })));
+      toast.success('Đã xóa tất cả lỗi');
+    } catch {
+      toast.error('Có lỗi xảy ra, thử lại');
+      void fetchLogs();
     }
   };
 
@@ -351,7 +422,11 @@ export default function CSVImportPage() {
                   onDelete={handleDelete}
                   isArchived={false}
                 />
-                <ErrorDetailsCard logs={activeLogs} />
+                <ErrorDetailsCard
+                  logs={activeLogs}
+                  onDeleteError={handleDeleteError}
+                  onClearErrors={handleClearErrors}
+                />
               </TabsContent>
 
               <TabsContent value="archived" className="space-y-6">
@@ -361,7 +436,11 @@ export default function CSVImportPage() {
                   onDelete={handleDelete}
                   isArchived={true}
                 />
-                <ErrorDetailsCard logs={archivedLogs} />
+                <ErrorDetailsCard
+                  logs={archivedLogs}
+                  onDeleteError={handleDeleteError}
+                  onClearErrors={handleClearErrors}
+                />
               </TabsContent>
             </Tabs>
           )}
