@@ -27,6 +27,7 @@ const DATE_FILTERS = [
 type Search = {
   priceFilter?: string
   date?: string
+  q?: string
 }
 
 function getService() {
@@ -34,15 +35,17 @@ function getService() {
 }
 
 function buildHref(
-  filters: { priceFilter: string; date: string },
-  next: Partial<{ priceFilter: string; date: string }>
+  filters: { priceFilter: string; date: string; q: string },
+  next: Partial<{ priceFilter: string; date: string; q: string }>
 ) {
   const params = new URLSearchParams()
   const priceFilter = next.priceFilter ?? filters.priceFilter
   const date = next.date ?? filters.date
+  const q = next.q ?? filters.q
 
   if (priceFilter !== 'all') params.set('priceFilter', priceFilter)
   if (date !== 'all') params.set('date', date)
+  if (q) params.set('q', q)
 
   const query = params.toString()
   return query ? `/workshops?${query}` : '/workshops'
@@ -87,6 +90,7 @@ export default async function WorkshopsPage({
   const filters = {
     priceFilter: query.priceFilter ?? 'all',
     date: query.date ?? 'all',
+    q: query.q ?? '',
   }
 
   const result = await getService().list({
@@ -100,6 +104,16 @@ export default async function WorkshopsPage({
   if (filters.priceFilter === 'free') items = items.filter((item) => item.price === 0)
   if (filters.priceFilter === 'paid') items = items.filter((item) => item.price > 0)
   items = filterByDate(items, filters.date)
+  if (filters.q) {
+    const lower = filters.q.toLowerCase()
+    items = items.filter(
+      (item) =>
+        item.title.toLowerCase().includes(lower) ||
+        item.category.toLowerCase().includes(lower) ||
+        item.speaker.toLowerCase().includes(lower) ||
+        item.location.toLowerCase().includes(lower)
+    )
+  }
 
   return (
     <main className="bg-canvas pb-16 text-ink">
@@ -109,6 +123,21 @@ export default async function WorkshopsPage({
         <h1 className="mt-4 font-display text-[64px] uppercase leading-[0.9] tracking-[-0.02em] text-ink md:text-[72px]">
           Tất Cả Workshop
         </h1>
+
+        {filters.q && (
+          <div className="mt-4 flex items-center gap-3">
+            <p className="text-[14px] text-ink/70">
+              Kết quả cho: <span className="font-semibold text-ink">&ldquo;{filters.q}&rdquo;</span>
+              {' '}— {items.length} workshop
+            </p>
+            <Link
+              href={buildHref(filters, { q: '' })}
+              className="text-[12px] text-ink/50 underline underline-offset-2 hover:text-ink"
+            >
+              Xóa tìm kiếm
+            </Link>
+          </div>
+        )}
 
         <div className="mt-6 flex flex-wrap gap-2">
           {PRICE_FILTERS.map((filter) => (

@@ -1,21 +1,41 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
-import { Search } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { Search, X } from 'lucide-react'
 import { NotificationBell } from '@/components/NotificationBell'
 import { signOut, useSession } from '@/lib/auth-client'
 
-const NAV_LINKS = [
-  { label: 'Workshop', href: '/workshops' },
-]
-
 export function Nav() {
-  const pathname = usePathname()
   const router = useRouter()
   const { data: session } = useSession()
   const [signingOut, setSigningOut] = useState(false)
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (searchOpen) inputRef.current?.focus()
+  }, [searchOpen])
+
+  const openSearch = () => setSearchOpen(true)
+
+  const closeSearch = () => {
+    setSearchOpen(false)
+    setSearchQuery('')
+  }
+
+  const submitSearch = () => {
+    const q = searchQuery.trim()
+    if (q) router.push(`/workshops?q=${encodeURIComponent(q)}`)
+    closeSearch()
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') submitSearch()
+    if (e.key === 'Escape') closeSearch()
+  }
 
   const onSignOut = async () => {
     setSigningOut(true)
@@ -36,28 +56,40 @@ export function Nav() {
         UNIHUB
       </Link>
 
-      {/* <nav className="hidden flex-1 items-center justify-center gap-6 md:flex">
-        {NAV_LINKS.map(({ label, href }) => {
-          const active = pathname === href || pathname.startsWith(`${href}/`)
-          return (
-            <Link
-              key={href}
-              href={href}
-              className={`border-b-2 pb-1 text-[15px] font-semibold text-ink ${
-                active ? 'border-ink' : 'border-transparent'
-              }`}
-            >
-              {label}
-            </Link>
-          )
-        })}
-      </nav> */}
-
       <div className="ml-auto flex items-center gap-3">
-        <button className="hidden h-9 items-center gap-2 rounded-md bg-cloud px-3 text-[13px] font-medium text-ink/60 sm:flex">
-          <Search className="h-3.5 w-3.5" />
-          <span>Tìm kiếm</span>
-        </button>
+        {/* Search */}
+        {searchOpen ? (
+          <div className="hidden items-center gap-1.5 rounded-md bg-cloud px-3 sm:flex">
+            <Search className="h-3.5 w-3.5 shrink-0 text-ink/40" />
+            <input
+              ref={inputRef}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={handleKeyDown}
+              onBlur={() => {
+                // small delay so clicking X doesn't race with blur
+                setTimeout(closeSearch, 150)
+              }}
+              placeholder="Tìm workshop..."
+              className="h-9 w-48 bg-transparent text-[13px] text-ink placeholder:text-ink/40 focus:outline-none"
+            />
+            <button
+              onMouseDown={(e) => e.preventDefault()} // prevent blur before click
+              onClick={closeSearch}
+              className="shrink-0 text-ink/40 hover:text-ink"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={openSearch}
+            className="hidden h-9 items-center gap-2 rounded-md bg-cloud px-3 text-[13px] font-medium text-ink/60 transition-colors hover:text-ink sm:flex"
+          >
+            <Search className="h-3.5 w-3.5" />
+            <span>Tìm kiếm</span>
+          </button>
+        )}
 
         <NotificationBell />
 
