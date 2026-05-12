@@ -7,7 +7,10 @@ import CameraScanner from '@/components/checkin/CameraScanner'
 import * as idb from '@/lib/idb'
 import { hmacVerify } from '@/lib/hmac'
 
-import type { WorkshopRecord, PendingCheckinRecord } from '@/lib/idb'
+import type {
+  WorkshopRecord,
+  PendingCheckinRecord,
+} from '@/lib/idb'
 
 // ── helpers ────────────────────────────────────────────────────────────────────
 
@@ -22,19 +25,22 @@ function getDeviceId(): string {
   return id
 }
 
-// FIX: use local timezone instead of UTC
+// IMPORTANT:
+// use LOCAL timezone instead of UTC
 function getLocalDateString(): string {
   const now = new Date()
-  const offset = now.getTimezoneOffset()
 
-  return new Date(now.getTime() - offset * 60000)
-    .toISOString()
-    .split('T')[0]
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+
+  return `${year}-${month}-${day}`
 }
 
 // Extracts the registrationId from either:
-//   JSON  {"registrationId":"...", ...}
-//   plain "UNIHUB-{registrationId}-{timestamp}"
+//
+// JSON  {"registrationId":"...", ...}
+// plain "UNIHUB-{registrationId}-{timestamp}"
 
 function parseRegistrationId(raw: string): string | null {
   try {
@@ -54,21 +60,34 @@ function parseRegistrationId(raw: string): string | null {
 
 export default function ScanPage() {
   const [online, setOnline] = useState(() =>
-    typeof navigator !== 'undefined' ? navigator.onLine : true,
+    typeof navigator !== 'undefined'
+      ? navigator.onLine
+      : true,
   )
 
-  const [workshops, setWorkshops] = useState<WorkshopRecord[]>([])
-  const [selectedWorkshopId, setSelectedWorkshopId] = useState('')
+  const [workshops, setWorkshops] = useState<
+    WorkshopRecord[]
+  >([])
+
+  const [selectedWorkshopId, setSelectedWorkshopId] =
+    useState('')
+
   const [pendingCount, setPendingCount] = useState(0)
 
   const [scanning, setScanning] = useState(false)
+
   const [preloading, setPreloading] = useState(false)
+
   const [syncing, setSyncing] = useState(false)
 
-  const [lastRefresh, setLastRefresh] = useState<string | null>(null)
+  const [lastRefresh, setLastRefresh] = useState<
+    string | null
+  >(null)
 
-  // Refs
+  // refs
+
   const onlineRef = useRef(online)
+
   const workshopIdRef = useRef(selectedWorkshopId)
 
   useEffect(() => {
@@ -79,8 +98,10 @@ export default function ScanPage() {
     workshopIdRef.current = selectedWorkshopId
   }, [selectedWorkshopId])
 
-  // Async guards
+  // async guards
+
   const isSyncingRef = useRef(false)
+
   const processingRef = useRef(false)
 
   // ── IDB helpers ──────────────────────────────────────────────────────────────
@@ -93,6 +114,7 @@ export default function ScanPage() {
       ])
 
       setWorkshops(ws)
+
       setPendingCount(count)
     } catch {
       // ignore
@@ -105,6 +127,7 @@ export default function ScanPage() {
     if (isSyncingRef.current) return
 
     isSyncingRef.current = true
+
     setSyncing(true)
 
     try {
@@ -114,9 +137,11 @@ export default function ScanPage() {
 
       const res = await fetch('/api/checkins/sync', {
         method: 'POST',
+
         headers: {
           'Content-Type': 'application/json',
         },
+
         body: JSON.stringify({
           records: pending,
         }),
@@ -138,7 +163,9 @@ export default function ScanPage() {
       await Promise.all(
         results.map(async (r) => {
           if (r.status !== 'invalid') {
-            await idb.removePendingCheckin(r.registrationId)
+            await idb.removePendingCheckin(
+              r.registrationId,
+            )
 
             if (r.status === 'synced') {
               synced++
@@ -151,88 +178,108 @@ export default function ScanPage() {
 
       if (synced > 0) {
         toast.success(
-          `Synced ${synced} check-in${synced > 1 ? 's' : ''}`,
+          `Synced ${synced} check-in${
+            synced > 1 ? 's' : ''
+          }`,
         )
       }
     } catch {
-      toast.error('Sync failed — will retry when online')
+      toast.error(
+        'Sync failed — will retry when online',
+      )
     } finally {
       isSyncingRef.current = false
+
       setSyncing(false)
     }
   }, [])
 
   // ── preload ──────────────────────────────────────────────────────────────────
 
-  const handlePreload = useCallback(async () => {
-    if (preloading) return
+  const handlePreload = useCallback(
+    async (silent = false) => {
+      if (preloading) return
 
-    setPreloading(true)
+      setPreloading(true)
 
-    try {
-      const date = getLocalDateString()
+      try {
+        const date = getLocalDateString()
 
-      const res = await fetch(
-        `/api/checkins/preload?date=${date}`,
-        {
-          cache: 'no-store',
-        },
-      )
+        const res = await fetch(
+          `/api/checkins/preload?date=${date}`,
+          {
+            cache: 'no-store',
+          },
+        )
 
-      if (!res.ok) {
-        const body = (await res.json()) as {
-          error?: string
+        if (!res.ok) {
+          const body = (await res.json()) as {
+            error?: string
+          }
+
+          throw new Error(
+            body.error ?? 'Preload failed',
+          )
         }
 
-        throw new Error(body.error ?? 'Preload failed')
+        const data = (await res.json()) as {
+          workshops: WorkshopRecord[]
+
+          tickets: Array<{
+            registrationId: string
+            workshopId: string
+            studentName: string
+            studentId: string | null
+            qrCode: string
+            qrSignature: string | null
+            checkedIn: boolean
+          }>
+
+          hmacKey: string
+        }
+
+        // clear old cached data
+
+        if (
+          'clearPreload' in idb &&
+          typeof idb.clearPreload === 'function'
+        ) {
+          await idb.clearPreload()
+        }
+
+        await idb.savePreload(
+          data.workshops,
+          data.tickets,
+          data.hmacKey,
+        )
+
+        setWorkshops(data.workshops)
+
+        setLastRefresh(
+          new Date().toLocaleTimeString('vi-VN'),
+        )
+
+        // only show toast when manual preload
+
+        if (!silent) {
+          toast.success(
+            `Loaded ${data.workshops.length} workshops`,
+          )
+        }
+      } catch (e) {
+        if (!silent) {
+          toast.error(
+            e instanceof Error
+              ? e.message
+              : 'Preload failed',
+          )
+        }
+      } finally {
+        setPreloading(false)
       }
-
-      const data = (await res.json()) as {
-        workshops: WorkshopRecord[]
-
-        tickets: Array<{
-          registrationId: string
-          workshopId: string
-          studentName: string
-          studentId: string | null
-          qrCode: string
-          qrSignature: string | null
-          checkedIn: boolean
-        }>
-
-        hmacKey: string
-      }
-
-      // IMPORTANT: clear old cached data
-      if ('clearPreload' in idb && typeof idb.clearPreload === 'function') {
-        await idb.clearPreload()
-      }
-
-      await idb.savePreload(
-        data.workshops,
-        data.tickets,
-        data.hmacKey,
-      )
-
-      setWorkshops(data.workshops)
-
-      setLastRefresh(
-        new Date().toLocaleTimeString('vi-VN'),
-      )
-
-      toast.success(
-        `Refreshed ${data.workshops.length} workshop${
-          data.workshops.length !== 1 ? 's' : ''
-        }`,
-      )
-    } catch (e) {
-      toast.error(
-        e instanceof Error ? e.message : 'Preload failed',
-      )
-    } finally {
-      setPreloading(false)
-    }
-  }, [preloading])
+    },
+    [preloading],
+  )
 
   // ── mount ────────────────────────────────────────────────────────────────────
 
@@ -240,8 +287,9 @@ export default function ScanPage() {
     const initial = setTimeout(() => {
       void refreshCounts()
 
-      // auto preload on page open
-      void handlePreload()
+      // auto preload silently
+
+      void handlePreload(true)
 
       if (navigator.onLine) {
         void syncPending()
@@ -253,8 +301,9 @@ export default function ScanPage() {
 
       void syncPending()
 
-      // refresh data again when back online
-      void handlePreload()
+      // refresh silently when online again
+
+      void handlePreload(true)
     }
 
     const handleOffline = () => {
@@ -262,7 +311,10 @@ export default function ScanPage() {
     }
 
     window.addEventListener('online', handleOnline)
+
     window.addEventListener('offline', handleOffline)
+
+    // SW broadcasts SYNC_NOW
 
     const handleSWMessage = (e: MessageEvent) => {
       if (e.data?.type === 'SYNC_NOW') {
@@ -278,22 +330,33 @@ export default function ScanPage() {
     return () => {
       clearTimeout(initial)
 
-      window.removeEventListener('online', handleOnline)
-      window.removeEventListener('offline', handleOffline)
+      window.removeEventListener(
+        'online',
+        handleOnline,
+      )
+
+      window.removeEventListener(
+        'offline',
+        handleOffline,
+      )
 
       navigator.serviceWorker?.removeEventListener(
         'message',
         handleSWMessage,
       )
     }
-  }, [refreshCounts, syncPending, handlePreload])
+  }, [
+    refreshCounts,
+    syncPending,
+    handlePreload,
+  ])
 
   // ── auto refresh every 3 minutes ────────────────────────────────────────────
 
   useEffect(() => {
     const interval = setInterval(() => {
       if (navigator.onLine) {
-        void handlePreload()
+        void handlePreload(true)
       }
     }, 1000 * 60 * 3)
 
@@ -318,9 +381,10 @@ export default function ScanPage() {
       }
 
       if (onlineRef.current) {
-        // ONLINE MODE
+        // ── online path ───────────────────────────────────────────────────
 
-        const registrationId = parseRegistrationId(raw)
+        const registrationId =
+          parseRegistrationId(raw)
 
         if (!registrationId) {
           toast.error('Unrecognized QR code')
@@ -351,36 +415,48 @@ export default function ScanPage() {
           if (body.code === 'NOT_FOUND') {
             toast.error('Registration not found')
           } else {
-            toast.error(body.error ?? 'Check-in failed')
+            toast.error(
+              body.error ?? 'Check-in failed',
+            )
           }
         }
       } else {
-        // OFFLINE MODE
+        // ── offline path ──────────────────────────────────────────────────
 
-        const ticket = await idb.getTicketByQrCode(raw)
+        const ticket =
+          await idb.getTicketByQrCode(raw)
 
         if (!ticket) {
           toast.error(
-            'QR not in preloaded data — tap Refresh Data first',
+            'QR not in preloaded data — tap Preload first',
           )
 
           return
         }
 
         if (ticket.workshopId !== workshopId) {
-          toast.error('QR belongs to a different workshop')
+          toast.error(
+            'QR belongs to a different workshop',
+          )
+
           return
         }
 
         if (ticket.checkedIn) {
-          toast.error('Already checked in (offline record)')
+          toast.error(
+            'Already checked in (offline record)',
+          )
+
           return
         }
 
         const hmacKey = await idb.getHmacKey()
 
         if (!hmacKey || !ticket.qrSignature) {
-          toast.error('Cannot verify QR — please refresh data')
+          toast.error(
+            'Cannot verify QR — please preload again',
+          )
+
           return
         }
 
@@ -397,8 +473,12 @@ export default function ScanPage() {
 
         const record: PendingCheckinRecord = {
           registrationId: ticket.registrationId,
+
           workshopId,
-          checkedInAt: new Date().toISOString(),
+
+          checkedInAt:
+            new Date().toISOString(),
+
           deviceId: getDeviceId(),
         }
 
@@ -466,10 +546,16 @@ export default function ScanPage() {
 
             <button
               onClick={syncPending}
-              disabled={!online || syncing || pendingCount === 0}
+              disabled={
+                !online ||
+                syncing ||
+                pendingCount === 0
+              }
               className="rounded-full border border-white/20 px-3 py-1 text-xs transition hover:bg-white/10 disabled:opacity-40"
             >
-              {syncing ? 'Syncing…' : 'Sync now'}
+              {syncing
+                ? 'Syncing…'
+                : 'Sync now'}
             </button>
           </div>
         </header>
@@ -480,39 +566,56 @@ export default function ScanPage() {
           <select
             value={selectedWorkshopId}
             onChange={(e) =>
-              setSelectedWorkshopId(e.target.value)
+              setSelectedWorkshopId(
+                e.target.value,
+              )
             }
             className="flex-1 rounded-lg bg-white/10 px-3 py-2 text-sm text-white outline-none"
           >
             <option value="">
               {workshops.length === 0
-                ? 'No workshops — tap Refresh Data'
+                ? 'No workshops — tap Preload'
                 : 'Select workshop…'}
             </option>
 
             {workshops.map((w) => (
-              <option key={w.id} value={w.id}>
+              <option
+                key={w.id}
+                value={w.id}
+              >
                 {w.title} · {w.room}
               </option>
             ))}
           </select>
 
+          {/* PRELOAD BUTTON */}
+
           <button
-            onClick={handlePreload}
+            onClick={() =>
+              handlePreload(false)
+            }
             disabled={preloading}
-            className="rounded-lg bg-white/10 px-3 py-2 text-sm transition hover:bg-white/20 disabled:opacity-40"
+            className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-blue-500 disabled:opacity-40"
           >
-            {preloading ? 'Refreshing…' : 'Refresh Data'}
+            {preloading
+              ? 'Loading…'
+              : 'Preload'}
           </button>
         </div>
 
         {/* ── info ─────────────────────────────────────────────────────────── */}
 
         <div className="border-b border-white/10 px-4 py-2 text-xs text-white/50">
-          <div>Current date: {getLocalDateString()}</div>
+          <div>
+            Current date:{' '}
+            {getLocalDateString()}
+          </div>
 
           {lastRefresh && (
-            <div>Last refresh: {lastRefresh}</div>
+            <div>
+              Last refresh:{' '}
+              {lastRefresh}
+            </div>
           )}
         </div>
 
@@ -520,27 +623,32 @@ export default function ScanPage() {
 
         <main className="flex flex-1 flex-col items-center justify-center gap-4 px-8 py-12">
           <button
-            onClick={() => setScanning(true)}
+            onClick={() =>
+              setScanning(true)
+            }
             disabled={!selectedWorkshopId}
             className="rounded-full bg-white px-12 py-5 text-xl font-bold text-black shadow-[0_0_40px_rgba(255,255,255,0.15)] transition hover:bg-white/90 disabled:opacity-30"
           >
             Scan QR Code
           </button>
 
-          {!selectedWorkshopId && workshops.length > 0 && (
-            <p className="text-sm text-white/50">
-              Select a workshop to begin scanning
-            </p>
-          )}
+          {!selectedWorkshopId &&
+            workshops.length > 0 && (
+              <p className="text-sm text-white/50">
+                Select a workshop to begin
+                scanning
+              </p>
+            )}
 
           {workshops.length === 0 && (
             <p className="max-w-xs text-center text-sm text-white/40">
               Tap{' '}
               <strong className="text-white/60">
-                Refresh Data
+                Preload
               </strong>{' '}
-              to download today&apos;s workshops and enable
-              offline scanning
+              to download today&apos;s
+              workshops and enable offline
+              scanning
             </p>
           )}
         </main>

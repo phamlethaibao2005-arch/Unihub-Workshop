@@ -59,7 +59,7 @@ export function ActivityFeed() {
         <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-white/60">Activity feed</span>
         <span className={`h-2 w-2 rounded-full ${connected ? 'bg-emerald' : 'bg-nikered'}`} />
       </div>
-      <div className="h-[240px] overflow-y-auto p-4 font-mono text-[12px] text-white/80 space-y-1">
+      <div className="h-60 overflow-y-auto p-4 font-mono text-[12px] text-white/80 space-y-1">
         {lines.length === 0 && (
           <span className="text-white/30">Chờ hoạt động…</span>
         )}
