@@ -197,7 +197,7 @@ function LogsTable({
               <td className="px-4 py-3">
                 <div className="flex items-center gap-2">
                   <FileText className="h-4 w-4 shrink-0 text-gray-400" />
-                  <span className="max-w-[200px] truncate">{log.filename}</span>
+                  <span className="max-w-50 truncate">{log.filename}</span>
                 </div>
               </td>
               <td className="px-4 py-3 text-center">

@@ -9,9 +9,6 @@ import { signOut, useSession } from '@/lib/auth-client'
 
 const NAV_LINKS = [
   { label: 'Workshop', href: '/workshops' },
-  { label: 'Cộng đồng', href: '/community' },
-  { label: 'Đối tác', href: '/partners' },
-  { label: 'Hỗ trợ', href: '/support' },
 ]
 
 export function Nav() {
