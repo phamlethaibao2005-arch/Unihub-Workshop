@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Search, X } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { NotificationBell } from '@/components/NotificationBell'
 import { signOut, useSession } from '@/lib/auth-client'
 
@@ -15,11 +16,25 @@ export function Nav() {
   const [searchQuery, setSearchQuery] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
 
+  // Focus input when opening
   useEffect(() => {
     if (searchOpen) inputRef.current?.focus()
   }, [searchOpen])
 
-  const openSearch = () => setSearchOpen(true)
+  // '/' shortcut to open search (skip when focused on an input/textarea)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (searchOpen) return
+      const tag = (document.activeElement?.tagName ?? '').toLowerCase()
+      if (tag === 'input' || tag === 'textarea') return
+      if (e.key === '/') {
+        e.preventDefault()
+        setSearchOpen(true)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [searchOpen])
 
   const closeSearch = () => {
     setSearchOpen(false)
@@ -57,39 +72,64 @@ export function Nav() {
       </Link>
 
       <div className="ml-auto flex items-center gap-3">
-        {/* Search */}
-        {searchOpen ? (
-          <div className="hidden items-center gap-1.5 rounded-md bg-cloud px-3 sm:flex">
-            <Search className="h-3.5 w-3.5 shrink-0 text-ink/40" />
-            <input
-              ref={inputRef}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={handleKeyDown}
-              onBlur={() => {
-                // small delay so clicking X doesn't race with blur
-                setTimeout(closeSearch, 150)
-              }}
-              placeholder="Tìm workshop..."
-              className="h-9 w-48 bg-transparent text-[13px] text-ink placeholder:text-ink/40 focus:outline-none"
-            />
-            <button
-              onMouseDown={(e) => e.preventDefault()} // prevent blur before click
-              onClick={closeSearch}
-              className="shrink-0 text-ink/40 hover:text-ink"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
-          </div>
-        ) : (
-          <button
-            onClick={openSearch}
-            className="hidden h-9 items-center gap-2 rounded-md bg-cloud px-3 text-[13px] font-medium text-ink/60 transition-colors hover:text-ink sm:flex"
-          >
-            <Search className="h-3.5 w-3.5" />
-            <span>Tìm kiếm</span>
-          </button>
-        )}
+        {/* Search — animates width via framer-motion spring */}
+        <motion.div
+          animate={{ width: searchOpen ? 220 : 130 }}
+          transition={{ type: 'spring', stiffness: 500, damping: 38, mass: 0.8 }}
+          // Close when focus leaves the whole search area
+          onBlur={(e) => {
+            if (!e.currentTarget.contains(e.relatedTarget as Node)) closeSearch()
+          }}
+          className="relative hidden h-9 cursor-pointer items-center overflow-hidden rounded-md bg-cloud px-3 sm:flex"
+          onClick={() => { if (!searchOpen) setSearchOpen(true) }}
+        >
+          <Search className="h-3.5 w-3.5 shrink-0 text-ink/50 transition-colors" />
+
+          <AnimatePresence mode="wait" initial={false}>
+            {searchOpen ? (
+              <motion.div
+                key="input"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.12 }}
+                className="ml-2 flex flex-1 items-center gap-1 overflow-hidden"
+              >
+                <input
+                  ref={inputRef}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Tìm workshop..."
+                  className="min-w-0 flex-1 bg-transparent text-[13px] text-ink placeholder:text-ink/40 focus:outline-none"
+                />
+                <button
+                  onMouseDown={(e) => e.preventDefault()} // keep focus in container
+                  onClick={(e) => { e.stopPropagation(); closeSearch() }}
+                  className="shrink-0 rounded p-0.5 text-ink/30 transition-colors hover:text-ink"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="label"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.1 }}
+                className="ml-2 flex items-center gap-2"
+              >
+                <span className="whitespace-nowrap text-[13px] font-medium text-ink/50">
+                  Tìm kiếm
+                </span>
+                <kbd className="rounded border border-ink/15 bg-white px-1.5 py-px font-mono text-[10px] text-ink/30">
+                  /
+                </kbd>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.div>
 
         <NotificationBell />
 
@@ -113,7 +153,10 @@ export function Nav() {
             </button>
           </div>
         ) : (
-          <Link href="/login" className="text-[13px] font-semibold text-ink underline underline-offset-4 cursor-pointer">
+          <Link
+            href="/login"
+            className="text-[13px] font-semibold text-ink underline underline-offset-4 cursor-pointer"
+          >
             Đăng nhập
           </Link>
         )}
