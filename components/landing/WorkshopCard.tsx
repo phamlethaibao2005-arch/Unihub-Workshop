@@ -17,17 +17,17 @@ export function WorkshopCard({ workshop }: { workshop: WorkshopDTO }) {
   return (
     <Link
       href={`/workshops/${workshop.id}`}
-      className="group flex flex-col overflow-hidden rounded-lg border border-hairline bg-canvas transition-colors hover:border-ink/20"
+      className="group flex flex-col overflow-hidden rounded-xl border border-hairline bg-canvas transition-colors hover:border-ink/30"
     >
       {/* Image */}
-      <div className="relative aspect-3/2 overflow-hidden bg-cloud">
+      <div className="relative h-40 overflow-hidden bg-cloud sm:h-44 lg:h-48">
         <Image
           src={workshop.cover}
           alt={workshop.title}
           fill
           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
           loading="lazy"
-          className="object-cover transition-transform duration-500 group-hover:scale-105"
+          className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
         />
 
         {/* Date gradient overlay */}

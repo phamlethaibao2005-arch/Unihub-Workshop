@@ -8,7 +8,6 @@ import { WorkshopStatus } from '@/modules/workshop/domain/WorkshopStatus'
 import { Container } from '@/shared/infrastructure/Container'
 import { EventBus } from '@/shared/infrastructure/EventBus'
 import { toWorkshopDTO } from '@/shared/types/workshop-presenter'
-import type { WorkshopDTO } from '@/shared/types/workshop'
 
 const PAGE_SIZE = 12
 
@@ -55,34 +54,30 @@ function buildHref(
   return query ? `/workshops?${query}` : '/workshops'
 }
 
-function filterByDate(items: WorkshopDTO[], dateFilter: string): WorkshopDTO[] {
-  if (dateFilter === 'all') return items
+function buildDateRange(dateFilter: string): { dateFrom?: Date; dateTo?: Date } {
+  if (dateFilter === 'all') return {}
 
   const now = new Date()
   const start = new Date(now.getFullYear(), now.getMonth(), now.getDate())
 
   if (dateFilter === 'today') {
-    return items.filter((item) => new Date(`${item.date}T00:00:00`).getTime() === start.getTime())
+    const end = new Date(start)
+    end.setDate(start.getDate() + 1)
+    return { dateFrom: start, dateTo: end }
   }
 
   if (dateFilter === 'week') {
     const end = new Date(start)
     end.setDate(start.getDate() + 7)
-    return items.filter((item) => {
-      const date = new Date(`${item.date}T00:00:00`)
-      return date >= start && date < end
-    })
+    return { dateFrom: start, dateTo: end }
   }
 
   if (dateFilter === 'month') {
     const end = new Date(start.getFullYear(), start.getMonth() + 1, 1)
-    return items.filter((item) => {
-      const date = new Date(`${item.date}T00:00:00`)
-      return date >= start && date < end
-    })
+    return { dateFrom: start, dateTo: end }
   }
 
-  return items
+  return {}
 }
 
 export default async function WorkshopsPage({
@@ -98,32 +93,35 @@ export default async function WorkshopsPage({
     page: query.page ?? '1',
   }
 
-  const result = await getService().list({
-    filters: { status: WorkshopStatus.ACTIVE },
-    page: 1,
-    size: 200,
-  })
+  const { dateFrom, dateTo } = buildDateRange(filters.date)
 
-  let items = result.items.map(toWorkshopDTO)
-
-  if (filters.priceFilter === 'free') items = items.filter((item) => item.price === 0)
-  if (filters.priceFilter === 'paid') items = items.filter((item) => item.price > 0)
-  items = filterByDate(items, filters.date)
-  if (filters.q) {
-    const lower = filters.q.toLowerCase()
-    items = items.filter(
-      (item) =>
-        item.title.toLowerCase().includes(lower) ||
-        item.category.toLowerCase().includes(lower) ||
-        item.speaker.toLowerCase().includes(lower) ||
-        item.location.toLowerCase().includes(lower)
-    )
+  const page = Math.max(1, parseInt(filters.page ?? '1'))
+  const listFilters = {
+    status: WorkshopStatus.ACTIVE,
+    priceFilter: filters.priceFilter === 'all' ? undefined : (filters.priceFilter as 'free' | 'paid'),
+    search: filters.q || undefined,
+    dateFrom,
+    dateTo,
   }
 
-  const currentPage = Math.max(1, parseInt(filters.page ?? '1'))
-  const totalPages = Math.max(1, Math.ceil(items.length / PAGE_SIZE))
-  const safePage = Math.min(currentPage, totalPages)
-  const pagedItems = items.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
+  let result = await getService().list({
+    filters: listFilters,
+    page,
+    size: PAGE_SIZE,
+  })
+
+  const totalPages = Math.max(1, Math.ceil(result.total / PAGE_SIZE))
+  const safePage = Math.min(page, totalPages)
+
+  if (safePage !== page) {
+    result = await getService().list({
+      filters: listFilters,
+      page: safePage,
+      size: PAGE_SIZE,
+    })
+  }
+
+  const pagedItems = result.items.map(toWorkshopDTO)
 
   const buildPageHref = (p: number) => buildHref({ ...filters, page: '1' }, { page: String(p) })
 
@@ -136,11 +134,11 @@ export default async function WorkshopsPage({
           Tất Cả Workshop
         </h1>
 
-        {filters.q && (
+          {filters.q && (
           <div className="mt-4 flex items-center gap-3">
             <p className="text-[14px] text-ink/70">
               Kết quả cho: <span className="font-semibold text-ink">&ldquo;{filters.q}&rdquo;</span>
-              {' '}— {items.length} workshop
+              {' '}— {result.total} workshop
             </p>
             <Link
               href={buildHref(filters, { q: '', page: '1' })}

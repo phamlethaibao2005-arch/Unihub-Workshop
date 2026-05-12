@@ -1,8 +1,9 @@
 'use client'
 
 import { useRef, useState } from 'react'
+import Image from 'next/image'
 import { Camera } from 'lucide-react'
-import { authClient } from '@/lib/auth-client'
+import { updateUser } from '@/lib/auth-client'
 
 interface Stats {
   total: number
@@ -18,7 +19,9 @@ interface Props {
   image: string | null
 }
 
-function cropAndResizeToDataUrl(file: File): Promise<string> {
+const MAX_AVATAR_BYTES = 2 * 1024 * 1024
+
+function cropAndResizeToBlob(file: File): Promise<Blob> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
     reader.onload = (e) => {
@@ -32,9 +35,22 @@ function cropAndResizeToDataUrl(file: File): Promise<string> {
         canvas.width = 200
         canvas.height = 200
         const ctx = canvas.getContext('2d')
-        if (!ctx) { reject(new Error('canvas context unavailable')); return }
+        if (!ctx) {
+          reject(new Error('canvas context unavailable'))
+          return
+        }
         ctx.drawImage(img, sx, sy, size, size, 0, 0, 200, 200)
-        resolve(canvas.toDataURL('image/jpeg', 0.8))
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) {
+              reject(new Error('blob creation failed'))
+              return
+            }
+            resolve(blob)
+          },
+          'image/jpeg',
+          0.85
+        )
       }
       img.onerror = reject
       img.src = e.target?.result as string
@@ -72,14 +88,40 @@ export function ProfileClient({ name: initialName, email, studentId: initialStud
     // reset input so selecting same file works again
     e.target.value = ''
 
+    if (!file.type.startsWith('image/')) {
+      setMessage({ type: 'error', text: 'Chỉ chấp nhận file ảnh' })
+      return
+    }
+
+    if (file.size > MAX_AVATAR_BYTES) {
+      setMessage({ type: 'error', text: 'Ảnh không được vượt quá 2MB' })
+      return
+    }
+
     setAvatarSaving(true)
     try {
-      const dataUrl = await cropAndResizeToDataUrl(file)
-      const result = await (authClient.updateUser as (data: Record<string, unknown>) => Promise<{ error: { message?: string } | null }>)({ image: dataUrl })
+      const blob = await cropAndResizeToBlob(file)
+      const formData = new FormData()
+      formData.append('file', blob, 'avatar.jpg')
+
+      const response = await fetch('/api/profile/avatar', {
+        method: 'POST',
+        body: formData,
+      })
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => null)
+        throw new Error(data?.error ?? 'Không thể tải ảnh lên')
+      }
+
+      const data = (await response.json()) as { url?: string }
+      if (!data.url) throw new Error('Không thể tải ảnh lên')
+
+      const result = await updateUser({ image: data.url })
       if (result?.error) {
-        setMessage({ type: 'error', text: result.error.message ?? 'Không thể tải ảnh lên' })
+        setMessage({ type: 'error', text: result.error.message ?? 'Không thể lưu ảnh' })
       } else {
-        setImage(dataUrl)
+        setImage(data.url)
       }
     } catch {
       setMessage({ type: 'error', text: 'Có lỗi khi xử lý ảnh' })
@@ -96,7 +138,7 @@ export function ProfileClient({ name: initialName, email, studentId: initialStud
         name: name.trim(),
         studentId: studentId.trim() || null,
       }
-      const result = await (authClient.updateUser as (data: Record<string, unknown>) => Promise<{ error: { message?: string } | null }>)(payload)
+      const result = await updateUser(payload)
       if (result?.error) {
         setMessage({ type: 'error', text: result.error.message ?? 'Có lỗi xảy ra' })
       } else {
@@ -121,7 +163,13 @@ export function ProfileClient({ name: initialName, email, studentId: initialStud
           aria-label="Thay đổi ảnh đại diện"
         >
           {image ? (
-            <img src={image} alt="" className="h-full w-full object-cover" />
+            <Image
+              src={image}
+              alt=""
+              fill
+              sizes="64px"
+              className="object-cover"
+            />
           ) : (
             <span className="font-display text-[28px] leading-none">{initials}</span>
           )}
@@ -173,7 +221,7 @@ export function ProfileClient({ name: initialName, email, studentId: initialStud
         </p>
 
         <label className="flex flex-col gap-1.5">
-          <span className="text-[11px] uppercase tracking-[0.1em] text-ink/50">Họ và tên</span>
+          <span className="text-[11px] uppercase tracking-widest text-ink/50">Họ và tên</span>
           <input
             type="text"
             value={name}
@@ -184,7 +232,7 @@ export function ProfileClient({ name: initialName, email, studentId: initialStud
         </label>
 
         <label className="flex flex-col gap-1.5">
-          <span className="text-[11px] uppercase tracking-[0.1em] text-ink/50">Mã số sinh viên</span>
+          <span className="text-[11px] uppercase tracking-widest text-ink/50">Mã số sinh viên</span>
           <input
             type="text"
             value={studentId}
@@ -195,7 +243,7 @@ export function ProfileClient({ name: initialName, email, studentId: initialStud
         </label>
 
         <label className="flex flex-col gap-1.5">
-          <span className="text-[11px] uppercase tracking-[0.1em] text-ink/50">Email</span>
+          <span className="text-[11px] uppercase tracking-widest text-ink/50">Email</span>
           <input
             type="email"
             value={email}
@@ -210,8 +258,8 @@ export function ProfileClient({ name: initialName, email, studentId: initialStud
         <div
           className={`mt-4 border px-4 py-3 text-[13px] ${
             message.type === 'success'
-              ? 'border-[var(--emerald)] text-[var(--emerald)]'
-              : 'border-[var(--red)] text-[var(--red)]'
+              ? 'border-(--emerald) text-(--emerald)'
+              : 'border-(--red) text-(--red)'
           }`}
         >
           {message.text}

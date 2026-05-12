@@ -3,6 +3,8 @@ import type { WorkshopStatus } from './WorkshopStatus'
 
 export interface WorkshopFilters {
   date?: Date
+  dateFrom?: Date
+  dateTo?: Date
   status?: WorkshopStatus
   search?: string
   priceFilter?: 'free' | 'paid'

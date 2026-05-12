@@ -27,6 +27,12 @@ function parseDate(value: string | null): Date | undefined {
   return Number.isNaN(date.getTime()) ? undefined : date
 }
 
+function parseDateTime(value: string | null): Date | undefined {
+  if (!value) return undefined
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? undefined : date
+}
+
 export async function GET(req: Request) {
   try {
     const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? '127.0.0.1'
@@ -42,13 +48,23 @@ export async function GET(req: Request) {
     const url = new URL(req.url)
     const page = parsePage(url.searchParams.get('page'))
     const date = parseDate(url.searchParams.get('date'))
+    const dateFrom = parseDateTime(url.searchParams.get('dateFrom'))
+    const dateTo = parseDateTime(url.searchParams.get('dateTo'))
     const category = url.searchParams.get('category')?.trim().toLowerCase() || undefined
+    const search = url.searchParams.get('q')?.trim() || undefined
     const priceFilter = (url.searchParams.get('priceFilter') || undefined) as
       | 'free'
       | 'paid'
       | undefined
 
-    const filters = { status: WorkshopStatus.ACTIVE, date, priceFilter }
+    const filters = {
+      status: WorkshopStatus.ACTIVE,
+      date,
+      dateFrom,
+      dateTo,
+      priceFilter,
+      search,
+    }
 
     // category is derived from description at runtime, cannot be filtered in DB
     if (category) {

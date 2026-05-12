@@ -67,11 +67,20 @@ export class PrismaWorkshopRepository implements IWorkshopRepository {
       const m = filters.date.getUTCMonth()
       const d = filters.date.getUTCDate()
       where.date = { gte: new Date(Date.UTC(y, m, d)), lt: new Date(Date.UTC(y, m, d + 1)) }
+    } else if (filters?.dateFrom || filters?.dateTo) {
+      const gte = filters.dateFrom
+      const lt = filters.dateTo
+      where.date = {
+        ...(gte ? { gte } : {}),
+        ...(lt ? { lt } : {}),
+      }
     }
     if (filters?.search) {
       where.OR = [
         { title: { contains: filters.search, mode: 'insensitive' } },
         { speaker: { contains: filters.search, mode: 'insensitive' } },
+        { room: { contains: filters.search, mode: 'insensitive' } },
+        { description: { contains: filters.search, mode: 'insensitive' } },
       ]
     }
     if (filters?.priceFilter === 'free') where.price = 0
