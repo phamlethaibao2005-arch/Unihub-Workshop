@@ -51,7 +51,6 @@ export default function CSVImportPage() {
       const response = await fetch('/api/admin/csv-import');
       const data = await response.json();
       setLogs(data.logs || []);
-      setErrorPage(0);
     } catch (error) {
       console.error('Error fetching logs:', error);
     } finally {
@@ -99,6 +98,7 @@ export default function CSVImportPage() {
 
       toast.success('CSV file uploaded. Processing started...');
       e.currentTarget.value = ''; // Reset input
+      setErrorPage(0);
       fetchLogs();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Upload failed');
