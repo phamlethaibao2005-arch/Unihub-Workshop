@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import { Search, X } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { NotificationBell } from '@/components/NotificationBell'
@@ -10,6 +10,7 @@ import { signOut, useSession } from '@/lib/auth-client'
 
 export function Nav() {
   const router = useRouter()
+  const pathname = usePathname()
   const { data: session } = useSession()
   const [signingOut, setSigningOut] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
@@ -135,6 +136,17 @@ export function Nav() {
 
         {session?.user ? (
           <div className="flex items-center gap-2">
+            <Link
+              href="/my-registrations"
+              className={`hidden text-[13px] font-medium transition-colors sm:block ${
+                pathname === '/my-registrations'
+                  ? 'text-ink'
+                  : 'text-ink/50 hover:text-ink'
+              }`}
+            >
+              Vé của tôi
+            </Link>
+
             <Link href="/profile" className="flex items-center gap-2">
               <span className="hidden text-[13px] font-semibold text-ink sm:block">
                 {session.user.name?.split(' ').pop() ?? 'Bạn'}
