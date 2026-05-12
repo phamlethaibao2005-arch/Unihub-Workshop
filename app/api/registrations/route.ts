@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { unstable_rethrow } from 'next/navigation'
+import { registerLimiter, retryAfterSeconds } from '@/lib/ratelimit'
 import { db } from '@/shared/infrastructure/PrismaClient'
 import { redis } from '@/shared/infrastructure/RedisClient'
 import { Container } from '@/shared/infrastructure/Container'
@@ -86,13 +87,22 @@ const WORKSHOP_SELECT = {
 export async function POST(req: Request) {
   try {
     const session = await requireAuth()
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? '127.0.0.1'
+    if (registerLimiter) {
+      const { success, reset } = await registerLimiter.limit(`${ip}:${session.user.id}`)
+      if (!success) {
+        return NextResponse.json(
+          { error: 'Too many requests', code: 'RATE_LIMIT_EXCEEDED' },
+          { status: 429, headers: { 'Retry-After': String(retryAfterSeconds(reset)) } },
+        )
+      }
+    }
     const body = await req.json()
     const idempotencyKey =
       req.headers.get('X-Idempotency-Key') ??
       (typeof body.idempotencyKey === 'string' ? body.idempotencyKey : null) ??
       crypto.randomUUID()
     const workshopId = body.workshopId as string
-    const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? '127.0.0.1'
 
     const result = await getService(ip).register(session.user.id, workshopId, idempotencyKey)
     return NextResponse.json(result, { status: 201 })

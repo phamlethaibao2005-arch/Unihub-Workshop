@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { Redis } from "@upstash/redis"
-import { Ratelimit } from "@upstash/ratelimit"
+import { loginLimiter, registerLimiter, retryAfterSeconds } from "@/lib/ratelimit"
 
 const SESSION_COOKIE = "better-auth.session_token"
 const SESSION_COOKIE_SECURE = "__Secure-better-auth.session_token"
@@ -15,14 +15,6 @@ const redis = hasRedisConfig
   ? new Redis({
       url: process.env.UPSTASH_REDIS_REST_URL!,
       token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-    })
-  : null
-
-const loginRatelimit = redis
-  ? new Ratelimit({
-      redis,
-      limiter: Ratelimit.tokenBucket(5, "15 m", 5),
-      prefix: "rl:login",
     })
   : null
 
@@ -106,15 +98,29 @@ export async function proxy(req: NextRequest): Promise<NextResponse> {
   const method = req.method
   const isApi = pathname.startsWith("/api/")
 
-  // Rate-limit email login
+  // Rate-limit email login (5 req / 15 min sliding window, by IP)
   if (pathname === "/api/auth/login/email" && method === "POST") {
     const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "anonymous"
-    if (loginRatelimit) {
-      const { success } = await loginRatelimit.limit(ip)
+    if (loginLimiter) {
+      const { success, reset } = await loginLimiter.limit(ip)
       if (!success) {
         return NextResponse.json(
           { error: "Too many requests", code: "RATE_LIMIT_EXCEEDED" },
-          { status: 429 }
+          { status: 429, headers: { "Retry-After": String(retryAfterSeconds(reset)) } }
+        )
+      }
+    }
+  }
+
+  // Rate-limit registration (token bucket 2/s burst 10, by IP — fine-grained per user in route handler)
+  if (pathname === "/api/registrations" && method === "POST") {
+    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "anonymous"
+    if (registerLimiter) {
+      const { success, reset } = await registerLimiter.limit(ip)
+      if (!success) {
+        return NextResponse.json(
+          { error: "Too many requests", code: "RATE_LIMIT_EXCEEDED" },
+          { status: 429, headers: { "Retry-After": String(retryAfterSeconds(reset)) } }
         )
       }
     }

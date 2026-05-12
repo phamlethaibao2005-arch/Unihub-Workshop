@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { unstable_rethrow } from 'next/navigation'
+import { workshopsListLimiter, retryAfterSeconds } from '@/lib/ratelimit'
 import { Container } from '@/shared/infrastructure/Container'
 import { EventBus } from '@/shared/infrastructure/EventBus'
 import { WorkshopService } from '@/modules/workshop/application/WorkshopService'
@@ -28,6 +29,16 @@ function parseDate(value: string | null): Date | undefined {
 
 export async function GET(req: Request) {
   try {
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? '127.0.0.1'
+    if (workshopsListLimiter) {
+      const { success, reset } = await workshopsListLimiter.limit(ip)
+      if (!success) {
+        return NextResponse.json(
+          { error: 'Too many requests', code: 'RATE_LIMIT_EXCEEDED' },
+          { status: 429, headers: { 'Retry-After': String(retryAfterSeconds(reset)) } },
+        )
+      }
+    }
     const url = new URL(req.url)
     const page = parsePage(url.searchParams.get('page'))
     const date = parseDate(url.searchParams.get('date'))
