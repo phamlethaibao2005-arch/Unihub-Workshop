@@ -107,6 +107,11 @@ export function Nav() {
         <Link href="/workshops" className={`rounded-md px-3 py-1.5 ${navLink('/workshops')}`}>
           Workshop
         </Link>
+        {session?.user && (
+          <Link href="/my-registrations" className={`rounded-md px-3 py-1.5 ${navLink('/my-registrations')}`}>
+            Vé của tôi
+          </Link>
+        )}
       </nav>
 
       {/* ── Right: search + bell + my-tickets + avatar ──────── */}
@@ -166,11 +171,6 @@ export function Nav() {
 
         {session?.user ? (
           <>
-            {/* My tickets link */}
-            <Link href="/my-registrations" className={`hidden sm:block ${navLink('/my-registrations')}`}>
-              Vé của tôi
-            </Link>
-
             {/* Avatar + profile dropdown */}
             <div ref={profileRef} className="relative">
               <button
