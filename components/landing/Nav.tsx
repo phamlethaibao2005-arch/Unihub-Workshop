@@ -36,7 +36,7 @@ export function Nav() {
         UNIHUB
       </Link>
 
-      <nav className="hidden flex-1 items-center justify-center gap-6 md:flex">
+      {/* <nav className="hidden flex-1 items-center justify-center gap-6 md:flex">
         {NAV_LINKS.map(({ label, href }) => {
           const active = pathname === href || pathname.startsWith(`${href}/`)
           return (
@@ -51,7 +51,7 @@ export function Nav() {
             </Link>
           )
         })}
-      </nav>
+      </nav> */}
 
       <div className="ml-auto flex items-center gap-3">
         <button className="hidden h-9 items-center gap-2 rounded-md bg-cloud px-3 text-[13px] font-medium text-ink/60 sm:flex">
