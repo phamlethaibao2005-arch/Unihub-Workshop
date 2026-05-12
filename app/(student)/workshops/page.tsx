@@ -10,6 +10,7 @@ import { EventBus } from '@/shared/infrastructure/EventBus'
 import { toWorkshopDTO } from '@/shared/types/workshop-presenter'
 import type { WorkshopDTO } from '@/shared/types/workshop'
 
+const PAGE_SIZE = 12
 
 const PRICE_FILTERS = [
   { label: 'Tất cả', value: 'all' },
@@ -28,6 +29,7 @@ type Search = {
   priceFilter?: string
   date?: string
   q?: string
+  page?: string
 }
 
 function getService() {
@@ -35,17 +37,19 @@ function getService() {
 }
 
 function buildHref(
-  filters: { priceFilter: string; date: string; q: string },
-  next: Partial<{ priceFilter: string; date: string; q: string }>
+  filters: { priceFilter: string; date: string; q: string; page: string },
+  next: Partial<{ priceFilter: string; date: string; q: string; page: string }>
 ) {
   const params = new URLSearchParams()
   const priceFilter = next.priceFilter ?? filters.priceFilter
   const date = next.date ?? filters.date
   const q = next.q ?? filters.q
+  const page = next.page ?? filters.page
 
   if (priceFilter !== 'all') params.set('priceFilter', priceFilter)
   if (date !== 'all') params.set('date', date)
   if (q) params.set('q', q)
+  if (page && page !== '1') params.set('page', page)
 
   const query = params.toString()
   return query ? `/workshops?${query}` : '/workshops'
@@ -91,12 +95,13 @@ export default async function WorkshopsPage({
     priceFilter: query.priceFilter ?? 'all',
     date: query.date ?? 'all',
     q: query.q ?? '',
+    page: query.page ?? '1',
   }
 
   const result = await getService().list({
     filters: { status: WorkshopStatus.ACTIVE },
     page: 1,
-    size: 100,
+    size: 200,
   })
 
   let items = result.items.map(toWorkshopDTO)
@@ -115,6 +120,13 @@ export default async function WorkshopsPage({
     )
   }
 
+  const currentPage = Math.max(1, parseInt(filters.page ?? '1'))
+  const totalPages = Math.max(1, Math.ceil(items.length / PAGE_SIZE))
+  const safePage = Math.min(currentPage, totalPages)
+  const pagedItems = items.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
+
+  const buildPageHref = (p: number) => buildHref({ ...filters, page: '1' }, { page: String(p) })
+
   return (
     <main className="bg-canvas pb-16 text-ink">
 
@@ -131,7 +143,7 @@ export default async function WorkshopsPage({
               {' '}— {items.length} workshop
             </p>
             <Link
-              href={buildHref(filters, { q: '' })}
+              href={buildHref(filters, { q: '', page: '1' })}
               className="text-[12px] text-ink/50 underline underline-offset-2 hover:text-ink"
             >
               Xóa tìm kiếm
@@ -143,7 +155,7 @@ export default async function WorkshopsPage({
           {PRICE_FILTERS.map((filter) => (
             <Link
               key={filter.value}
-              href={buildHref(filters, { priceFilter: filter.value })}
+              href={buildHref(filters, { priceFilter: filter.value, page: '1' })}
               className={cn(
                 'rounded-full border border-hairline bg-canvas px-4 py-2 text-[14px] font-medium text-ink',
                 filters.priceFilter === filter.value && 'border-ink bg-ink text-white'
@@ -158,7 +170,7 @@ export default async function WorkshopsPage({
           {DATE_FILTERS.map((filter) => (
             <Link
               key={filter.value}
-              href={buildHref(filters, { date: filter.value })}
+              href={buildHref(filters, { date: filter.value, page: '1' })}
               className={cn(
                 'rounded-full border border-hairline bg-canvas px-4 py-2 text-[14px] font-medium text-ink',
                 filters.date === filter.value && 'border-ink bg-ink text-white'
@@ -170,7 +182,12 @@ export default async function WorkshopsPage({
         </div>
       </section>
 
-      <WorkshopGrid items={items} />
+      <WorkshopGrid
+        items={pagedItems}
+        currentPage={safePage}
+        totalPages={totalPages}
+        buildPageHref={buildPageHref}
+      />
       <Footer />
     </main>
   )

@@ -54,6 +54,7 @@ export default async function ProfilePage() {
         email={user.email}
         studentId={user.studentId ?? null}
         stats={{ total, confirmed, upcoming }}
+        image={user.image ?? null}
       />
 
       {/* Quick links */}

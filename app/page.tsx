@@ -49,7 +49,7 @@ export default async function Home() {
       <Hero3D />
 
       <section>
-        <WorkshopGrid items={featured} />
+        <WorkshopGrid items={featured} currentPage={1} totalPages={1} buildPageHref={() => '/workshops'} />
       </section>
 
       <section className="overflow-hidden border-y border-hairline bg-canvas py-4">

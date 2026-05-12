@@ -7,9 +7,10 @@ import { signOut } from '@/lib/auth-client'
 interface AdminUserPanelProps {
   name: string
   email: string
+  image?: string | null
 }
 
-export function AdminUserPanel({ name, email }: AdminUserPanelProps) {
+export function AdminUserPanel({ name, email, image }: AdminUserPanelProps) {
   const router = useRouter()
   const initial = name.trim().charAt(0).toUpperCase()
 
@@ -22,8 +23,13 @@ export function AdminUserPanel({ name, email }: AdminUserPanelProps) {
     <div className="mt-auto border-t border-hairline px-4 py-4">
       <div className="flex items-center gap-3">
         {/* Avatar */}
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-ink text-[13px] font-semibold text-canvas">
-          {initial}
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-ink text-[13px] font-semibold text-canvas overflow-hidden">
+          {image ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={image} alt="" className="h-full w-full object-cover" />
+          ) : (
+            initial
+          )}
         </div>
 
         {/* Info */}

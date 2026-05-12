@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { useRouter, usePathname } from 'next/navigation'
 import { Search, X, User, LogOut } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -175,10 +176,20 @@ export function Nav() {
             <div ref={profileRef} className="relative">
               <button
                 onClick={() => setProfileOpen((v) => !v)}
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-ink text-[12px] font-semibold text-canvas ring-2 ring-transparent transition hover:opacity-85 focus-visible:ring-ink/30"
+                className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-ink text-[12px] font-semibold text-canvas ring-2 ring-transparent transition hover:opacity-85 focus-visible:ring-ink/30 overflow-hidden"
                 aria-label="Tài khoản"
               >
-                {session.user.name?.[0]?.toUpperCase() ?? 'U'}
+                {session.user.image ? (
+                  <Image
+                    src={session.user.image}
+                    alt=""
+                    fill
+                    sizes="32px"
+                    className="rounded-full object-cover"
+                  />
+                ) : (
+                  session.user.name?.[0]?.toUpperCase() ?? 'U'
+                )}
               </button>
 
               <AnimatePresence>

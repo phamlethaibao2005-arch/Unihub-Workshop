@@ -15,16 +15,27 @@ export function WorkshopCard({ workshop }: { workshop: WorkshopDTO }) {
   const price = formatPrice(workshop.price)
 
   return (
-    <Link href={`/workshops/${workshop.id}`} className="block rounded-none bg-canvas shadow-none">
-      <div className="relative aspect-4/5 w-full overflow-hidden bg-cloud">
+    <Link
+      href={`/workshops/${workshop.id}`}
+      className="group flex flex-col overflow-hidden rounded-lg border border-hairline bg-canvas transition-colors hover:border-ink/20"
+    >
+      {/* Image */}
+      <div className="relative aspect-3/2 overflow-hidden bg-cloud">
         <Image
           src={workshop.cover}
           alt={workshop.title}
           fill
-          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-          className="object-cover"
+          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
           loading="lazy"
+          className="object-cover transition-transform duration-500 group-hover:scale-105"
         />
+
+        {/* Date gradient overlay */}
+        <div className="absolute bottom-0 inset-x-0 bg-linear-to-t from-black/60 to-transparent px-3 py-2">
+          <p className="text-[11px] text-white/80">{workshop.date} · {workshop.time}</p>
+        </div>
+
+        {/* Badge */}
         {workshop.badge && (
           <span
             className={`badge-promo absolute left-3 top-3 z-10 ${
@@ -36,19 +47,16 @@ export function WorkshopCard({ workshop }: { workshop: WorkshopDTO }) {
         )}
       </div>
 
-      <div className="mt-2 flex flex-col gap-2">
-        <p className="text-[13px] font-medium text-ink/60">{workshop.category}</p>
-        <p className="text-[15px] font-semibold uppercase leading-snug tracking-tight text-ink">
-          {workshop.title}
-        </p>
-        <p className="text-[13px] font-medium text-ink/60">{workshop.speaker}</p>
+      {/* Content */}
+      <div className="flex flex-col gap-2 p-4">
+        <p className="text-[11px] uppercase tracking-wide text-ink/40">{workshop.category}</p>
+        <p className="text-[14px] font-semibold leading-snug text-ink line-clamp-2">{workshop.title}</p>
+        <p className="text-[12px] text-ink/50">{workshop.speaker}</p>
 
         <SeatBar taken={workshop.seatsTaken} total={workshop.seatsTotal} />
 
-        <div className="mt-1 flex items-end justify-between gap-3">
-          <span className="text-[12px] leading-snug text-ink/60">
-            {workshop.time} / {workshop.location}
-          </span>
+        <div className="flex items-center justify-between pt-1">
+          <span className="text-[12px] text-ink/50">{workshop.location}</span>
           {price.isDisplay ? (
             <span className="shrink-0 font-display text-[18px] text-ink">{price.label}</span>
           ) : (

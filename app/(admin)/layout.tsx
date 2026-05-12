@@ -27,6 +27,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
         <AdminUserPanel
           name={session.user.name ?? 'Admin'}
           email={session.user.email}
+          image={session.user.image ?? null}
         />
       </aside>
 

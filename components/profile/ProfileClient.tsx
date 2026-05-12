@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
+import { Camera } from 'lucide-react'
 import { authClient } from '@/lib/auth-client'
 
 interface Stats {
@@ -14,13 +15,44 @@ interface Props {
   email: string
   studentId: string | null
   stats: Stats
+  image: string | null
 }
 
-export function ProfileClient({ name: initialName, email, studentId: initialStudentId, stats }: Props) {
+function cropAndResizeToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const img = new window.Image()
+      img.onload = () => {
+        const size = Math.min(img.width, img.height)
+        const sx = (img.width - size) / 2
+        const sy = (img.height - size) / 2
+
+        const canvas = document.createElement('canvas')
+        canvas.width = 200
+        canvas.height = 200
+        const ctx = canvas.getContext('2d')
+        if (!ctx) { reject(new Error('canvas context unavailable')); return }
+        ctx.drawImage(img, sx, sy, size, size, 0, 0, 200, 200)
+        resolve(canvas.toDataURL('image/jpeg', 0.8))
+      }
+      img.onerror = reject
+      img.src = e.target?.result as string
+    }
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
+}
+
+export function ProfileClient({ name: initialName, email, studentId: initialStudentId, stats, image: initialImage }: Props) {
   const [name, setName] = useState(initialName)
   const [studentId, setStudentId] = useState(initialStudentId ?? '')
   const [saving, setSaving] = useState(false)
+  const [avatarSaving, setAvatarSaving] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [image, setImage] = useState<string | null>(initialImage)
+
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const initials = name
     .trim()
@@ -29,6 +61,32 @@ export function ProfileClient({ name: initialName, email, studentId: initialStud
     .map((w) => w[0].toUpperCase())
     .slice(0, 2)
     .join('') || 'U'
+
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click()
+  }
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    // reset input so selecting same file works again
+    e.target.value = ''
+
+    setAvatarSaving(true)
+    try {
+      const dataUrl = await cropAndResizeToDataUrl(file)
+      const result = await (authClient.updateUser as (data: Record<string, unknown>) => Promise<{ error: { message?: string } | null }>)({ image: dataUrl })
+      if (result?.error) {
+        setMessage({ type: 'error', text: result.error.message ?? 'Không thể tải ảnh lên' })
+      } else {
+        setImage(dataUrl)
+      }
+    } catch {
+      setMessage({ type: 'error', text: 'Có lỗi khi xử lý ảnh' })
+    } finally {
+      setAvatarSaving(false)
+    }
+  }
 
   const handleSave = async () => {
     setSaving(true)
@@ -55,9 +113,36 @@ export function ProfileClient({ name: initialName, email, studentId: initialStud
     <div className="flex flex-col gap-0">
       {/* Avatar + name */}
       <div className="flex items-center gap-4 mb-8">
-        <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-ink text-canvas">
-          <span className="font-display text-[28px] leading-none">{initials}</span>
-        </div>
+        <button
+          type="button"
+          onClick={handleAvatarClick}
+          disabled={avatarSaving}
+          className="group relative flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-ink text-canvas overflow-hidden"
+          aria-label="Thay đổi ảnh đại diện"
+        >
+          {image ? (
+            <img src={image} alt="" className="h-full w-full object-cover" />
+          ) : (
+            <span className="font-display text-[28px] leading-none">{initials}</span>
+          )}
+          {/* Hover overlay */}
+          <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50 opacity-0 transition-opacity group-hover:opacity-100">
+            {avatarSaving ? (
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+            ) : (
+              <Camera className="h-5 w-5 text-white" />
+            )}
+          </div>
+        </button>
+
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleFileChange}
+        />
+
         <div>
           <p className="text-[15px] font-semibold text-ink leading-tight">{name || 'Chưa đặt tên'}</p>
           <p className="text-[13px] text-ink/50 mt-0.5">{email}</p>
