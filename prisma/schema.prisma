@@ -214,6 +214,7 @@ model CsvImportLog {
   duplicateCount Int
   errorDetails   Json?
   status         String
+  archived       Boolean  @default(false)
   processedAt    DateTime @default(now())
 }
 

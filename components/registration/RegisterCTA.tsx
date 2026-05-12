@@ -26,10 +26,30 @@ export function RegisterCTA({
   workshopPrice,
   isFull,
   isRegistered,
-  paymentDegraded,
+  paymentDegraded: initialPaymentDegraded,
 }: RegisterCTAProps) {
   const [open, setOpen] = useState(false)
   const [countdown, setCountdown] = useState(30)
+  const [paymentDegraded, setPaymentDegraded] = useState(initialPaymentDegraded)
+
+  // Keep degraded state in sync with the circuit breaker (same 30s cadence as SystemStatusBanner)
+  useEffect(() => {
+    async function poll() {
+      try {
+        const res = await fetch('/api/system/status', { cache: 'no-store' })
+        if (res.ok) {
+          const data = await res.json() as { payment?: string }
+          setPaymentDegraded(data.payment === 'degraded')
+        }
+      } catch {
+        // keep last known value
+      }
+    }
+
+    void poll()
+    const id = setInterval(() => void poll(), 30_000)
+    return () => clearInterval(id)
+  }, [])
 
   useEffect(() => {
     if (!paymentDegraded || workshopPrice === 0) return

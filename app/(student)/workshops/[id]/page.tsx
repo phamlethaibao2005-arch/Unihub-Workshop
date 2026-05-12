@@ -37,8 +37,8 @@ async function getPaymentStatus(): Promise<PaymentStatus> {
   if (process.env.PAYMENT_STATUS === 'degraded') return 'degraded'
 
   try {
-    const status = await redis.get<{ payment?: string }>('system:status')
-    return status?.payment === 'degraded' ? 'degraded' : 'ok'
+    const circuit = await redis.get<{ state?: string }>('circuit:vnpay')
+    return circuit?.state === 'OPEN' ? 'degraded' : 'ok'
   } catch {
     return 'ok'
   }
