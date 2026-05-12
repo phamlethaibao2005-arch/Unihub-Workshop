@@ -22,7 +22,9 @@ type StudentRow = z.infer<typeof studentRowSchema>;
 export class StudentCSVImportJob extends BaseImportJob {
   private processQueue: Array<{ row: StudentRow; rowIndex: number }> = [];
   private readonly BATCH_SIZE = 100;
-  private readonly CSV_DIR = resolve(process.cwd(), 'data/csv-import');
+  private readonly CSV_DIR = process.env.VERCEL
+    ? '/tmp/csv-import'
+    : resolve(process.cwd(), 'data/csv-import');
 
   /**
    * Read rows from CSV file with streaming and BOM handling.

@@ -1,14 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { writeFileSync, existsSync, mkdirSync } from 'fs';
-import { resolve } from 'path';
 import { db } from '@/shared/infrastructure/PrismaClient';
 import { Role } from '@/modules/auth/domain/Role';
 import { requireRole } from '@/lib/session';
 import { toResponse } from '@/shared/errors/handle';
 import { enqueue } from '@/shared/infrastructure/QStashClient';
 
-const CSV_DIR = resolve(process.cwd(), 'data/csv-import');
-const INCOMING_DIR = resolve(CSV_DIR, 'incoming');
 const BASE_URL = process.env.BETTER_AUTH_URL!;
 const DESTINATION = `${BASE_URL}/api/queue/csv-import`;
 
@@ -50,21 +46,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'File must be a CSV file' }, { status: 400 });
     }
 
-    // Ensure incoming directory exists
-    if (!existsSync(INCOMING_DIR)) {
-      mkdirSync(INCOMING_DIR, { recursive: true });
-    }
-
-    // Save file to incoming/
+    // Encode file content for transport — avoids writing to the read-only /var/task filesystem on Vercel
     const buffer = await file.arrayBuffer();
     const filename = `${Date.now()}_${file.name}`;
-    const filepath = resolve(INCOMING_DIR, filename);
+    const content = Buffer.from(buffer).toString('base64');
+    console.log(`[CSV Import API] Received file: ${filename} (${buffer.byteLength} bytes)`);
 
-    writeFileSync(filepath, Buffer.from(buffer));
-    console.log(`[CSV Import API] Received file: ${filename}`);
-
-    // Enqueue job
-    await enqueue(DESTINATION, { filename, triggeredBy: 'admin' }, { retries: 3 });
+    // Enqueue job with file content embedded in payload
+    await enqueue(DESTINATION, { filename, content, triggeredBy: 'admin' }, { retries: 3 });
 
     console.log(`[CSV Import API] Enqueued job for ${filename}`);
 

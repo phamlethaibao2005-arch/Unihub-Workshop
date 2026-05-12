@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Bebas_Neue, JetBrains_Mono } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
+import { SystemStatusBanner } from "@/components/SystemStatusBanner";
 import "./globals.css";
 
 const inter = Inter({
@@ -40,6 +41,7 @@ export default function RootLayout({
       className={`${inter.variable} ${bebas.variable} ${mono.variable}`}
     >
       <body className="font-sans bg-white text-ink antialiased">
+        <SystemStatusBanner />
         {children}
         <Toaster position="bottom-right" richColors />
       </body>

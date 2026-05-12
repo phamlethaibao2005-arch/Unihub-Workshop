@@ -1,17 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { renameSync, existsSync, mkdirSync } from 'fs';
+import { writeFileSync, readFileSync, renameSync, existsSync, mkdirSync } from 'fs';
 import { resolve } from 'path';
 import { z } from 'zod';
 import { StudentCSVImportJob } from '@/modules/csv-import/application/StudentCSVImportJob';
 import { redis } from '@/shared/infrastructure/RedisClient';
 import { verifyQStashSignature } from '@/shared/infrastructure/QStashClient';
 
-const CSV_DIR = resolve(process.cwd(), 'data/csv-import');
-const PROCESSING_DIR = resolve(CSV_DIR, 'processing');
-const PROCESSED_DIR = resolve(CSV_DIR, 'processed');
+// /tmp is writable on Vercel serverless; data/csv-import is used in local dev
+const BASE_DIR = process.env.VERCEL
+  ? '/tmp/csv-import'
+  : resolve(process.cwd(), 'data/csv-import');
+const PROCESSING_DIR = resolve(BASE_DIR, 'processing');
+const PROCESSED_DIR = resolve(BASE_DIR, 'processed');
 
 const payloadSchema = z.object({
   filename: z.string().min(1),
+  content: z.string().optional(), // base64-encoded file content (admin upload flow)
   triggeredBy: z.string().optional(),
 });
 
@@ -34,7 +38,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
     }
 
-    const { filename, triggeredBy } = payload;
+    const { filename, content, triggeredBy } = payload;
 
     // Distributed lock: prevent concurrent imports
     const lockKey = 'csv-import:lock';
@@ -53,9 +57,21 @@ export async function POST(request: NextRequest) {
     try {
       console.log(`[CSV Import Queue] Processing ${filename} (triggered by: ${triggeredBy})`);
 
-      // Ensure processed directory exists
-      if (!existsSync(PROCESSED_DIR)) {
-        mkdirSync(PROCESSED_DIR, { recursive: true });
+      // Ensure directories exist
+      mkdirSync(PROCESSING_DIR, { recursive: true });
+      mkdirSync(PROCESSED_DIR, { recursive: true });
+
+      if (content) {
+        // Admin upload flow: file content was embedded in the QStash payload
+        writeFileSync(resolve(PROCESSING_DIR, filename), Buffer.from(content, 'base64'));
+        console.log(`[CSV Import Queue] Wrote ${filename} to processing dir from payload`);
+      } else {
+        // Cron/local flow: file should already be in processing/ (moved by cron handler)
+        const cronProcessingPath = resolve(resolve(process.cwd(), 'data/csv-import'), 'processing', filename);
+        if (!existsSync(resolve(PROCESSING_DIR, filename)) && existsSync(cronProcessingPath)) {
+          mkdirSync(PROCESSING_DIR, { recursive: true });
+          writeFileSync(resolve(PROCESSING_DIR, filename), readFileSync(cronProcessingPath));
+        }
       }
 
       // Run import job

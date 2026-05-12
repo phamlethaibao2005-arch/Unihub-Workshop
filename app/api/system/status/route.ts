@@ -5,19 +5,23 @@ interface CircuitState {
   state: 'CLOSED' | 'OPEN' | 'HALF_OPEN'
 }
 
+function circuitStatus(result: PromiseSettledResult<CircuitState | null>): 'ok' | 'degraded' {
+  if (result.status !== 'fulfilled') return 'ok'
+  return result.value?.state === 'OPEN' ? 'degraded' : 'ok'
+}
+
 export async function GET() {
-  const [circuitResult, dbResult, redisResult] = await Promise.allSettled([
+  const [paymentCircuit, aiCircuit, emailCircuit, dbResult] = await Promise.allSettled([
     redis.get<CircuitState>('circuit:vnpay'),
+    redis.get<CircuitState>('circuit:ai'),
+    redis.get<CircuitState>('circuit:email'),
     db.$queryRaw`SELECT 1`,
-    redis.set('health:ping', '1'),
   ])
 
-  const circuit = circuitResult.status === 'fulfilled' ? circuitResult.value : null
-  const payment = circuit?.state === 'OPEN' ? 'degraded' : 'ok'
-
   return Response.json({
-    payment,
+    payment: circuitStatus(paymentCircuit),
+    ai: circuitStatus(aiCircuit),
+    email: circuitStatus(emailCircuit),
     db: dbResult.status === 'fulfilled' ? 'ok' : 'degraded',
-    redis: redisResult.status === 'fulfilled' ? 'ok' : 'degraded',
   })
 }
