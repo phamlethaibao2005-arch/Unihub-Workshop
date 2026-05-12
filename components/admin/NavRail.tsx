@@ -2,35 +2,37 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { LayoutDashboard, CalendarDays, FileSpreadsheet, Bell, Settings } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const NAV_ITEMS = [
-  { label: 'Dashboard', href: '/admin/dashboard' },
-  { label: 'Workshops', href: '/admin/workshops' },
-  { label: 'CSV Import', href: '/admin/csv-import' },
-  { label: 'Thông báo', href: '/admin/notifications' },
-  { label: 'Hệ thống', href: '/admin/system' },
+  { label: 'Dashboard',   href: '/admin/dashboard',      icon: LayoutDashboard },
+  { label: 'Workshops',   href: '/admin/workshops',       icon: CalendarDays },
+  { label: 'CSV Import',  href: '/admin/csv-import',      icon: FileSpreadsheet },
+  { label: 'Thông báo',   href: '/admin/notifications',   icon: Bell },
+  { label: 'Hệ thống',    href: '/admin/system',          icon: Settings },
 ]
 
 export function NavRail() {
   const pathname = usePathname()
 
   return (
-    <nav className="flex flex-col gap-1 pt-2">
-      {NAV_ITEMS.map((item) => {
-        const active = pathname === item.href || pathname.startsWith(item.href + '/')
+    <nav className="flex flex-col gap-0.5 px-3 pt-3">
+      {NAV_ITEMS.map(({ label, href, icon: Icon }) => {
+        const active = pathname === href || pathname.startsWith(href + '/')
         return (
           <Link
-            key={item.href}
-            href={item.href}
+            key={href}
+            href={href}
             className={cn(
-              'px-6 py-2.5 text-[13px] font-medium tracking-tight transition-colors hover:text-ink',
+              'flex items-center gap-3 rounded px-3 py-2.5 text-[13px] font-medium tracking-tight transition-colors',
               active
-                ? 'border-b border-ink text-ink'
-                : 'text-ink/50 hover:text-ink/80',
+                ? 'bg-ink text-canvas'
+                : 'text-ink/50 hover:bg-ink/5 hover:text-ink',
             )}
           >
-            {item.label}
+            <Icon className="h-4 w-4 shrink-0" />
+            {label}
           </Link>
         )
       })}
