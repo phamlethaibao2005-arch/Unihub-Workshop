@@ -273,7 +273,8 @@ export default function CSVImportPage() {
   }, [fetchLogs]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.currentTarget.files?.[0];
+    const input = e.currentTarget;
+    const file = input.files?.[0];
     if (!file) return;
     if (!file.name.endsWith('.csv')) {
       toast.error('Vui lòng chọn tệp CSV');
@@ -286,7 +287,7 @@ export default function CSVImportPage() {
       const res = await fetch('/api/admin/csv-import', { method: 'POST', body: formData });
       if (!res.ok) throw new Error('Upload thất bại');
       toast.success('Đã tải lên. Đang xử lý...');
-      e.currentTarget.value = '';
+      input.value = '';
       void fetchLogs();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Upload thất bại');
