@@ -301,7 +301,7 @@ Read blueprint/specs/registration.md and §7.3 of design.md.
    cancel(userId, registrationId):
      - Verify ownership. If CONFIRMED/PENDING → cancel + seatManager.release + workshopRepo.update(currentRegistrations-1) + publish event.
 
-3. Cron handler: app/api/cron/registrations-cleanup/route.ts (verify Vercel cron header). Selects PENDING > 30min, cancels them, releases seats. Add to vercel.json (every 5 min).
+3. Cron handler: app/api/cron/registrations-cleanup/route.ts — verify `Authorization: Bearer ${CRON_SECRET}` header. Selects PENDING > 30min, cancels them, releases seats. Triggered by cron-job.org every 5 min (NOT vercel.json — Vercel Hobby free tier does not support sub-daily cron schedules). Configure cron-job.org to call GET `https://<domain>/api/cron/registrations-cleanup` with header `Authorization: Bearer <CRON_SECRET>`.
 
 Acceptance: tsc passes; concurrent test (script in scripts/load-test.ts) firing 100 register calls for capacity=60 yields exactly 60 CONFIRMED rows.
 ```
@@ -395,7 +395,7 @@ Read blueprint/specs/payment.md.
 5. app/(student)/workshops/[id]/payment-result/page.tsx — client poll every 3s up to 2min; show result card; on success embed QRDisplay.
 6. app/api/system/status/route.ts — GET returns { payment: state of circuit breaker, db: ok, redis: ok }.
 
-7. Cron app/api/cron/payments-reconcile/route.ts — every 5 min: PENDING > 10min → gateway.queryStatus → reconcile.
+7. Cron app/api/cron/payments-reconcile/route.ts — triggered by cron-job.org every 5 min (NOT vercel.json). Verify `Authorization: Bearer ${CRON_SECRET}`. PENDING > 10min → gateway.queryStatus → reconcile. Configure cron-job.org: GET `https://<domain>/api/cron/payments-reconcile`, header `Authorization: Bearer <CRON_SECRET>`.
 
 Acceptance: VNPAY sandbox round-trip works; firing the callback twice doesn't change state past first SUCCESS; toggling 5 failures → /api/system/status reports `payment: degraded`; UI hides paid-register CTA in degraded mode.
 ```
@@ -568,7 +568,7 @@ Read blueprint/specs/csv-import.md.
 4. app/api/queue/csv-import/route.ts — QStash handler runs StudentCSVImportJob → moves file to processed/.
 5. app/api/admin/csv-import/route.ts — POST manual trigger (file upload) → puts into incoming → enqueues. GET → list CsvImportLog.
 6. app/(admin)/csv-import/page.tsx — file picker + history table + status badges.
-7. vercel.json — cron entry: `{ "crons": [{ "path": "/api/cron/csv-import", "schedule": "0 2 * * *" }, { "path": "/api/cron/registrations-cleanup", "schedule": "*/5 * * * *" }, { "path": "/api/cron/payments-reconcile", "schedule": "*/5 * * * *" }] }`.
+7. vercel.json — cron entry for CSV import only (Vercel Hobby supports daily schedules): `{ "crons": [{ "path": "/api/cron/csv-import", "schedule": "0 2 * * *" }] }`. The other two crons (`registrations-cleanup`, `payments-reconcile`) run every 5 min via cron-job.org — configure each job with GET `https://<domain>/api/cron/<name>` and header `Authorization: Bearer <CRON_SECRET>`.
 
 Acceptance: drop sample.csv with 10 valid + 2 invalid rows into incoming/ → manual trigger → log row shows totalRows=12, success=10, error=2; users upserted; file moved to processed/.
 ```

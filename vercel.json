@@ -1,12 +1,8 @@
 {
   "crons": [
     {
-      "path": "/api/cron/registrations-cleanup",
-      "schedule": "0 0 * * *"
-    },
-    {
-      "path": "/api/cron/payments-reconcile",
-      "schedule": "0 0 * * *"
+      "path": "/api/cron/csv-import",
+      "schedule": "0 2 * * *"
     }
   ]
 }

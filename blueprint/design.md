@@ -265,9 +265,12 @@ Hệ thống ngoài:
 │  │                                                                          │ │
 │  │   ┌─────────────────┐   ┌───────────────────┐   ┌──────────────────┐   │ │
 │  │   │  Web App (SSR)  │   │   API Handlers    │   │  Cron Jobs       │   │ │
-│  │   │  React + ShadcnUI│  │  Route Handlers   │   │  vercel.json     │   │ │
+│  │   │  React + ShadcnUI│  │  Route Handlers   │   │  vercel.json:    │   │ │
 │  │   │  TailwindCSS    │   │  (REST endpoints) │   │  CSV sync 2AM    │   │ │
-│  │   └────────┬────────┘   └────────┬──────────┘   └────────┬─────────┘   │ │
+│  │   └────────┬────────┘   └────────┬──────────┘   │  cron-job.org:   │   │ │
+│  │            │                     │               │  cleanup */5min  │   │ │
+│  │            │                     │               │  reconcile */5m  │   │ │
+│  │            │                     │               └────────┬─────────┘   │ │
 │  │            │                     │                        │              │ │
 │  │   ┌────────▼─────────────────────▼────────────────────────▼──────────┐ │ │
 │  │   │           Business Logic Layer (modules/)                         │ │ │
@@ -305,7 +308,9 @@ Hệ thống ngoài:
 | Next.js App | Gemini AI | HTTPS (Google AI REST) |
 | Next.js App | Resend/SMTP | HTTPS / SMTP |
 | PWA | Next.js App | HTTPS (REST) / IndexedDB (offline) |
-| Cron Job | Next.js App | HTTP (internal trigger) |
+| Vercel Cron (vercel.json) | Next.js App `/api/cron/csv-import` | HTTP GET + `Authorization: Bearer CRON_SECRET` |
+| cron-job.org | Next.js App `/api/cron/registrations-cleanup` | HTTP GET + `Authorization: Bearer CRON_SECRET` |
+| cron-job.org | Next.js App `/api/cron/payments-reconcile` | HTTP GET + `Authorization: Bearer CRON_SECRET` |
 
 ---
 

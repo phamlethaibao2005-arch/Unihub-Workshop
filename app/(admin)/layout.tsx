@@ -21,7 +21,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
       </aside>
 
       {/* Main content */}
-      <main className="ml-[220px] min-h-screen flex-1 bg-canvas p-12">
+      <main className="ml-55 min-h-screen flex-1 bg-canvas p-12">
         {children}
       </main>
     </div>
