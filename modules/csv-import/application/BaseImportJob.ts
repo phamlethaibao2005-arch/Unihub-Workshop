@@ -103,7 +103,7 @@ export abstract class BaseImportJob {
           successCount: result.successCount,
           errorCount: result.errorCount,
           duplicateCount: result.duplicateCount,
-        errorDetails: this.buildErrorDetails(result.errorDetails)!,
+          errorDetails: this.buildErrorDetails(result.errorDetails)!,
           status: result.status,
         },
       });
